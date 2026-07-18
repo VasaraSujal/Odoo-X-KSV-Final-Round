@@ -4,9 +4,10 @@ class DashboardRepository {
   async getVehicleStats() {
     return prisma.$transaction([
       prisma.vehicle.count(),
-      prisma.vehicle.count({ where: { availabilityStatus: 'AVAILABLE' } }),
-      prisma.vehicle.count({ where: { availabilityStatus: 'BOOKED' } }),
-      prisma.vehicle.count({ where: { availabilityStatus: 'UNDER_MAINTENANCE' } })
+      prisma.vehicle.count({ where: { status: 'Available' } }),
+      prisma.vehicle.count({ where: { status: 'Reserved' } }),
+      prisma.vehicle.count({ where: { status: 'Rented' } }),
+      prisma.vehicle.count({ where: { status: 'Maintenance' } })
     ]);
   }
 
@@ -17,10 +18,10 @@ class DashboardRepository {
   async getRentalStats() {
     return prisma.$transaction([
       prisma.rentalOrder.count(),
-      prisma.rentalOrder.count({ where: { status: 'ACTIVE' } }),
-      prisma.rentalOrder.count({ where: { status: 'COMPLETED' } }),
-      prisma.rentalOrder.count({ where: { status: 'CANCELLED' } }),
-      prisma.rentalOrder.count({ where: { status: 'PENDING' } })
+      prisma.rentalOrder.count({ where: { orderStatus: 'Active' } }),
+      prisma.rentalOrder.count({ where: { orderStatus: 'Completed' } }),
+      prisma.rentalOrder.count({ where: { orderStatus: 'Cancelled' } }),
+      prisma.rentalOrder.count({ where: { orderStatus: 'Pending' } })
     ]);
   }
 
@@ -31,16 +32,17 @@ class DashboardRepository {
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
     const [total, todayRev, monthRev] = await prisma.$transaction([
-      prisma.payment.aggregate({ _sum: { amount: true }, where: { paymentStatus: 'SUCCESS' } }),
-      prisma.payment.aggregate({ _sum: { amount: true }, where: { paymentStatus: 'SUCCESS', paidAt: { gte: today } } }),
-      prisma.payment.aggregate({ _sum: { amount: true }, where: { paymentStatus: 'SUCCESS', paidAt: { gte: firstDayOfMonth } } })
+      prisma.payment.aggregate({ _sum: { totalAmount: true }, where: { paymentStatus: 'Paid' } }),
+      prisma.payment.aggregate({ _sum: { totalAmount: true }, where: { paymentStatus: 'Paid', paymentDate: { gte: today } } }),
+      prisma.payment.aggregate({ _sum: { totalAmount: true }, where: { paymentStatus: 'Paid', paymentDate: { gte: firstDayOfMonth } } })
     ]);
 
     return {
-      total: total._sum.amount || 0,
-      today: todayRev._sum.amount || 0,
-      month: monthRev._sum.amount || 0
+      total: Number(total._sum.totalAmount || 0),
+      today: Number(todayRev._sum.totalAmount || 0),
+      month: Number(monthRev._sum.totalAmount || 0)
     };
   }
 }
+
 export default new DashboardRepository();

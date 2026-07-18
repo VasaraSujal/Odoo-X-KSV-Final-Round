@@ -4,7 +4,7 @@ import prisma from '../../config/db.js';
 class DashboardService {
   async getOverview() {
     const [
-      [totalVehicles, availableVehicles, bookedVehicles, maintenanceVehicles],
+      [totalVehicles, availableVehicles, reservedVehicles, rentedVehicles, maintenanceVehicles],
       totalCustomers,
       [totalRentals, activeRentals, completedRentals, cancelledRentals, pendingRentals],
       revenue
@@ -16,16 +16,32 @@ class DashboardService {
     ]);
 
     const paymentsStats = await prisma.payment.aggregate({
-      _sum: { amount: true },
-      where: { paymentStatus: 'PENDING' } // assuming logic for pending payments, though payments table only has SUCCESS usually if completed
+      _sum: { totalAmount: true },
+      where: { paymentStatus: 'Pending' }
     });
 
     return {
-      vehicles: { total: totalVehicles, available: availableVehicles, reserved: bookedVehicles, rented: bookedVehicles, maintenance: maintenanceVehicles },
+      vehicles: {
+        total: totalVehicles,
+        available: availableVehicles,
+        reserved: reservedVehicles,
+        rented: rentedVehicles,
+        maintenance: maintenanceVehicles
+      },
       customers: { total: totalCustomers },
-      rentals: { total: totalRentals, active: activeRentals, completed: completedRentals, cancelled: cancelledRentals, pending: pendingRentals },
-      revenue: { total: revenue.total, today: revenue.today, monthly: revenue.month },
-      payments: { pendingAmount: paymentsStats._sum.amount || 0 }
+      rentals: {
+        total: totalRentals,
+        active: activeRentals,
+        completed: completedRentals,
+        cancelled: cancelledRentals,
+        pending: pendingRentals
+      },
+      revenue: {
+        total: revenue.total,
+        today: revenue.today,
+        monthly: revenue.month
+      },
+      payments: { pendingAmount: Number(paymentsStats._sum.totalAmount || 0) }
     };
   }
 
@@ -38,17 +54,17 @@ class DashboardService {
     const firstDayOfYear = new Date(today.getFullYear(), 0, 1);
 
     const [todayRev, weekRev, monthRev, yearRev] = await prisma.$transaction([
-      prisma.payment.aggregate({ _sum: { amount: true }, where: { paymentStatus: 'SUCCESS', paidAt: { gte: today } } }),
-      prisma.payment.aggregate({ _sum: { amount: true }, where: { paymentStatus: 'SUCCESS', paidAt: { gte: firstDayOfWeek } } }),
-      prisma.payment.aggregate({ _sum: { amount: true }, where: { paymentStatus: 'SUCCESS', paidAt: { gte: firstDayOfMonth } } }),
-      prisma.payment.aggregate({ _sum: { amount: true }, where: { paymentStatus: 'SUCCESS', paidAt: { gte: firstDayOfYear } } })
+      prisma.payment.aggregate({ _sum: { totalAmount: true }, where: { paymentStatus: 'Paid', paymentDate: { gte: today } } }),
+      prisma.payment.aggregate({ _sum: { totalAmount: true }, where: { paymentStatus: 'Paid', paymentDate: { gte: firstDayOfWeek } } }),
+      prisma.payment.aggregate({ _sum: { totalAmount: true }, where: { paymentStatus: 'Paid', paymentDate: { gte: firstDayOfMonth } } }),
+      prisma.payment.aggregate({ _sum: { totalAmount: true }, where: { paymentStatus: 'Paid', paymentDate: { gte: firstDayOfYear } } })
     ]);
 
     return {
-      today: todayRev._sum.amount || 0,
-      weekly: weekRev._sum.amount || 0,
-      monthly: monthRev._sum.amount || 0,
-      yearly: yearRev._sum.amount || 0
+      today: Number(todayRev._sum.totalAmount || 0),
+      weekly: Number(weekRev._sum.totalAmount || 0),
+      monthly: Number(monthRev._sum.totalAmount || 0),
+      yearly: Number(yearRev._sum.totalAmount || 0)
     };
   }
 
@@ -71,21 +87,22 @@ class DashboardService {
 
   async getVehicles() {
     const categories = await prisma.category.findMany({ include: { _count: { select: { vehicles: true } } } });
-    const formatted = categories.map(c => ({ category: c.name, count: c._count.vehicles }));
+    const formatted = categories.map(c => ({ category: c.categoryName, count: c._count.vehicles }));
     return { byCategory: formatted };
   }
 
   async getPayments() {
-    const [success, pending, refunded] = await Promise.all([
-      prisma.payment.aggregate({ _sum: { amount: true }, where: { paymentStatus: 'SUCCESS' } }),
-      prisma.payment.aggregate({ _sum: { amount: true }, where: { paymentStatus: 'PENDING' } }), // approximation
-      prisma.securityDeposit.aggregate({ _sum: { amountRefunded: true } })
+    const [paid, pending, refunded] = await Promise.all([
+      prisma.payment.aggregate({ _sum: { totalAmount: true }, where: { paymentStatus: 'Paid' } }),
+      prisma.payment.aggregate({ _sum: { totalAmount: true }, where: { paymentStatus: 'Pending' } }),
+      prisma.securityDeposit.aggregate({ _sum: { refundAmount: true } })
     ]);
     return {
-      totalPaid: success._sum.amount || 0,
-      pendingAmount: pending._sum.amount || 0,
-      refundAmount: refunded._sum.amountRefunded || 0
+      totalPaid: Number(paid._sum.totalAmount || 0),
+      pendingAmount: Number(pending._sum.totalAmount || 0),
+      refundAmount: Number(refunded._sum.refundAmount || 0)
     };
   }
 }
+
 export default new DashboardService();

@@ -8,40 +8,48 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2023-10-
 
 class StripeService {
   async createPaymentIntent(orderId) {
-    const order = await prisma.rentalOrder.findUnique({ where: { id: orderId }, include: { payments: { where: { paymentStatus: 'SUCCESS' } } } });
-    if (!order) throw new ApiError(404, 'Rental Order not found');
+    const payment = await prisma.payment.findUnique({
+      where: { orderId }
+    });
+    if (!payment) throw new ApiError(404, 'Payment record not found for this order');
+    if (payment.paymentStatus === 'Paid') throw new ApiError(400, 'Order is already paid');
 
-    const totalPaid = order.payments.reduce((acc, curr) => acc + Number(curr.amount), 0);
-    const balance = Number(order.grandTotal) - totalPaid;
-    if (balance <= 0) throw new ApiError(400, 'Order is already fully paid');
+    const balance = Number(payment.totalAmount);
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(balance * 100), // Stripe expects cents
-      currency: 'inr', // fallback, ideally from org settings
-      metadata: { rentalOrderId: order.id }
+      currency: 'inr',
+      metadata: { orderId }
     });
 
     return { clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id };
   }
 
   async createCheckoutSession(orderId, successUrl, cancelUrl) {
-    const order = await prisma.rentalOrder.findUnique({ where: { id: orderId }, include: { payments: { where: { paymentStatus: 'SUCCESS' } } } });
+    const order = await prisma.rentalOrder.findUnique({
+      where: { id: orderId },
+      include: { payment: true }
+    });
     if (!order) throw new ApiError(404, 'Rental Order not found');
+    if (!order.payment) throw new ApiError(404, 'Payment record not found for this order');
+    if (order.payment.paymentStatus === 'Paid') throw new ApiError(400, 'Order is already paid');
 
-    const totalPaid = order.payments.reduce((acc, curr) => acc + Number(curr.amount), 0);
-    const balance = Number(order.grandTotal) - totalPaid;
-    if (balance <= 0) throw new ApiError(400, 'Order is already fully paid');
+    const balance = Number(order.payment.totalAmount);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{
-        price_data: { currency: 'inr', product_data: { name: `Rental Order #${order.bookingNumber}` }, unit_amount: Math.round(balance * 100) },
+        price_data: {
+          currency: 'inr',
+          product_data: { name: `Rental Order #${order.orderNumber}` },
+          unit_amount: Math.round(balance * 100)
+        },
         quantity: 1,
       }],
       mode: 'payment',
       success_url: successUrl,
       cancel_url: cancelUrl,
-      metadata: { rentalOrderId: order.id }
+      metadata: { orderId: order.id }
     });
     return { url: session.url, sessionId: session.id };
   }
@@ -56,35 +64,22 @@ class StripeService {
     }
 
     if (event.type === 'payment_intent.succeeded' || event.type === 'checkout.session.completed') {
-      const data = event.type === 'checkout.session.completed' ? event.data.object : event.data.object;
-      const rentalOrderId = data.metadata?.rentalOrderId;
+      const data = event.data.object;
+      const orderId = data.metadata?.orderId;
       
-      if (rentalOrderId) {
-        // Find existing payments to avoid duplicate
-        const existing = await prisma.payment.findUnique({ where: { transactionId: data.payment_intent || data.id } });
+      if (orderId) {
+        const transactionId = data.payment_intent || data.id;
+        const existing = await prisma.payment.findUnique({ where: { transactionId } });
+        
         if (!existing) {
-          await prisma.$transaction(async (tx) => {
-            const amount = data.amount_received || data.amount_total;
-            await tx.payment.create({
-              data: {
-                rentalOrderId,
-                transactionId: data.payment_intent || data.id,
-                paymentMethod: 'CARD', // Maps to Prisma Enum
-                paymentGateway: 'STRIPE',
-                amount: amount / 100,
-                paymentStatus: 'SUCCESS'
-              }
-            });
-
-            // Recalculate order status
-            const order = await tx.rentalOrder.findUnique({ where: { id: rentalOrderId }, include: { payments: { where: { paymentStatus: 'SUCCESS' } } } });
-            const totalPaid = order.payments.reduce((acc, curr) => acc + Number(curr.amount), 0);
-            const balance = Number(order.grandTotal) - totalPaid;
-            
-            await tx.rentalOrder.update({
-              where: { id: rentalOrderId },
-              data: { paymentStatus: balance <= 0 ? 'PAID' : 'PARTIAL' }
-            });
+          await prisma.payment.update({
+            where: { orderId },
+            data: {
+              transactionId,
+              paymentMethod: 'Card',
+              paymentStatus: 'Paid',
+              paymentDate: new Date()
+            }
           });
         }
       }
@@ -99,29 +94,25 @@ class StripeService {
   }
 
   async refundPayment(paymentId) {
-    const payment = await prisma.payment.findUnique({ where: { id: paymentId }, include: { rentalOrder: { include: { payments: { where: { paymentStatus: 'SUCCESS' } } } } } });
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: { order: true }
+    });
     if (!payment) throw new ApiError(404, 'Payment not found');
-    if (!payment.transactionId || payment.paymentGateway !== 'STRIPE') throw new ApiError(400, 'Cannot refund non-stripe payment via this endpoint');
+    if (!payment.transactionId) throw new ApiError(400, 'Cannot refund non-stripe payment via this endpoint');
     
     // Process Stripe Refund
     const refund = await stripe.refunds.create({ payment_intent: payment.transactionId });
 
     return prisma.$transaction(async (tx) => {
-      await tx.payment.update({
+      const updatedPayment = await tx.payment.update({
         where: { id: paymentId },
-        data: { paymentStatus: 'REFUNDED' }
-      });
-      // Recalculate order status
-      const totalPaid = payment.rentalOrder.payments.filter(p => p.id !== paymentId).reduce((acc, curr) => acc + Number(curr.amount), 0);
-      const balance = Number(payment.rentalOrder.grandTotal) - totalPaid;
-      
-      await tx.rentalOrder.update({
-        where: { id: payment.rentalOrderId },
-        data: { paymentStatus: balance <= 0 ? 'PAID' : (totalPaid > 0 ? 'PARTIAL' : 'PENDING') }
+        data: { paymentStatus: 'Refunded' }
       });
 
-      return { refundId: refund.id, status: refund.status };
+      return { refundId: refund.id, status: refund.status, payment: updatedPayment };
     });
   }
 }
+
 export default new StripeService();

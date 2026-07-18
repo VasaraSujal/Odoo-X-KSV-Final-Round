@@ -5,13 +5,9 @@ let adminToken = '';
 let customerToken = '';
 let categoryId = '';
 let vehicleId = '';
-let rentalPeriodId = '';
 let customerId = '';
 let orderId = '';
-let paymentId = '';
-let depositId = '';
-
-const delay = (ms) => new Promise(res => setTimeout(res, ms));
+let pickupOtp = '';
 
 async function runTest(name, method, endpoint, body, token) {
   console.log('[TEST] ' + name + ' - ' + method + ' ' + endpoint);
@@ -38,96 +34,89 @@ async function runTest(name, method, endpoint, body, token) {
 }
 
 async function runAllTests() {
-  console.log('--- STARTING E2E API TESTS ---\\n');
+  console.log('--- STARTING E2E RESTRUCTURED API TESTS ---\n');
 
   // 1. Auth Admin
   const adminLogin = await runTest('Admin Login', 'POST', '/auth/login', { email: 'admin@driveease.com', password: 'Admin@123' });
   if (adminLogin.success) adminToken = adminLogin.data.data.token;
 
   // 2. Auth Customer (Register & Login)
-  await runTest('Register Customer', 'POST', '/auth/register', { firstName: 'Test', lastName: 'User', email: 'testuser@test.com', password: 'Password@123', role: 'CUSTOMER' });
-  const custLogin = await runTest('Customer Login', 'POST', '/auth/login', { email: 'testuser@test.com', password: 'Password@123' });
+  const randEmail = `testuser_${Date.now()}@test.com`;
+  await runTest('Register Customer', 'POST', '/auth/register', { firstName: 'Test', lastName: 'User', email: randEmail, password: 'Password@123', role: 'CUSTOMER' });
+  const custLogin = await runTest('Customer Login', 'POST', '/auth/login', { email: randEmail, password: 'Password@123' });
   if (custLogin.success) {
     customerToken = custLogin.data.data.token;
     customerId = custLogin.data.data.user.id;
   }
 
   // 3. Categories
-  const cat = await runTest('Create Category', 'POST', '/categories', { name: 'SUV ' + Date.now(), description: 'Sport Utility Vehicle' }, adminToken);
+  const cat = await runTest('Create Category', 'POST', '/categories', { categoryName: 'SUV_' + Date.now(), vehicleType: 'Four_Wheeler', description: 'Sport Utility Vehicle' }, adminToken);
   if (cat.success) categoryId = cat.data.data.id;
 
   // 4. Vehicles
+  const regNumber = 'KA05-' + Math.floor(1000 + Math.random() * 9000);
   const veh = await runTest('Create Vehicle', 'POST', '/vehicles', {
-    categoryId, brand: 'Toyota', model: 'Fortuner', registrationNumber: 'KA01-' + Date.now(),
-    vin: 'VIN-' + Date.now(), year: 2023, fuelType: 'Diesel', transmission: 'Automatic', color: 'White',
-    seatCapacity: 7, mileage: 12.5, basePrice: 5000, securityDeposit: 15000
+    categoryId,
+    vehicleName: 'Toyota Fortuner E2E',
+    brand: 'Toyota',
+    model: 'Fortuner',
+    registrationNumber: regNumber,
+    year: 2023,
+    fuelType: 'Diesel',
+    transmission: 'Automatic',
+    color: 'White',
+    seatCapacity: 7,
+    mileage: 12.5,
+    rentPerHour: 200,
+    rentPerDay: 3000,
+    rentPerWeek: 18000,
+    rentPerMonth: 65000,
+    securityDeposit: 15000,
+    engineCapacity: '2755 cc',
+    currentOdometer: 10000
   }, adminToken);
   if (veh.success) vehicleId = veh.data.data.id;
 
-  // 5. Rental Periods
-  const period = await runTest('Create Rental Period', 'POST', '/rental-periods', { name: '3 Days', days: 3 }, adminToken);
-  if (period.success) rentalPeriodId = period.data.data.id;
-
-  // 6. Rental Orders (Customer creates)
+  // 5. Rental Orders (Customer creates)
   const pickupDate = new Date(Date.now() + 86400000).toISOString();
   const returnDate = new Date(Date.now() + 86400000 * 4).toISOString();
   const order = await runTest('Create Rental Order', 'POST', '/rental-orders', {
-    rentalPeriodId, pickupDate, expectedReturnDate: returnDate
+    vehicleId,
+    pickupType: 'Store_Pickup',
+    pickupDate,
+    expectedReturnDate: returnDate,
+    rentalUnit: 'Day',
+    rentalDuration: 3
   }, customerToken);
-  if (order.success) orderId = order.data.data.id;
-
-  // 7. Rental Items (Add Vehicle to Order)
-  if (orderId && vehicleId) {
-    await runTest('Add Rental Item', 'POST', '/rental-orders/' + orderId + '/items', { vehicleId }, adminToken);
+  if (order.success) {
+    orderId = order.data.data.id;
+    pickupOtp = order.data.data.pickupOtp;
   }
 
-  // 8. Confirm Order
+  // 6. Confirm Order
   if (orderId) {
-    await runTest('Confirm Order', 'PATCH', '/rental-orders/' + orderId + '/status', { status: 'CONFIRMED' }, adminToken);
+    await runTest('Confirm Order', 'PATCH', '/rental-orders/' + orderId + '/status', { status: 'Confirmed' }, adminToken);
   }
 
-  // 9. Quotations
-  if (orderId) {
-    await runTest('Generate Quotation', 'POST', '/quotations/generate/' + orderId, {}, adminToken);
+  // 7. Process Pickup (Otp check)
+  if (orderId && pickupOtp) {
+    await runTest('Process Pickup', 'PATCH', '/rental-orders/' + orderId + '/pickup', { pickupOtp }, adminToken);
   }
 
-  // 10. Security Deposit
+  // 8. Process Return & Inspection (Trigger Invoice)
   if (orderId) {
-    const dep = await runTest('Collect Security Deposit', 'POST', '/security-deposits', { rentalOrderId: orderId, amountCollected: 15000 }, adminToken);
-    if (dep.success) depositId = dep.data.data.id;
-  }
-
-  // 11. Payments
-  if (orderId) {
-    const pay = await runTest('Make Payment', 'POST', '/payments', { rentalOrderId: orderId, amount: 5000, paymentMethod: 'UPI' }, adminToken);
-    if (pay.success) paymentId = pay.data.data.id;
-  }
-
-  // 12. Pickup
-  if (orderId) {
-    await runTest('Process Pickup', 'POST', '/pickups', {
-      rentalOrderId: orderId, executiveName: 'John Doe', pickupTime: pickupDate, odometerReading: 15000, fuelLevel: '100%'
+    await runTest('Process Return & Inspection', 'PATCH', '/rental-orders/' + orderId + '/return', {
+      returnCondition: 'Good',
+      returnRemarks: 'Returned safely, no damage.',
+      penaltyAmount: 0
     }, adminToken);
   }
 
-  // 13. Return
-  if (orderId) {
-    await runTest('Process Return', 'POST', '/returns', {
-      rentalOrderId: orderId, executiveName: 'Jane Doe', returnTime: returnDate, odometerReading: 15500, fuelLevel: '80%', vehicleCondition: 'EXCELLENT'
-    }, adminToken);
-  }
-
-  // 14. Penalties
-  if (orderId) {
-    await runTest('Calculate Penalties', 'POST', '/penalties/calculate', { rentalOrderId: orderId }, adminToken);
-    await runTest('Check Rental Closure', 'POST', '/penalties/check-closure/' + orderId, {}, adminToken);
-  }
-
-  // 15. Dashboards & Reports
+  // 9. Dashboards & Reports
   await runTest('Dashboard Overview', 'GET', '/dashboard/overview', null, adminToken);
   await runTest('Reports Rentals', 'GET', '/reports/rentals', null, adminToken);
 
-  console.log('\\n--- E2E TESTS COMPLETED ---');
+  console.log('\n--- E2E TESTS COMPLETED ---');
 }
 
 runAllTests();

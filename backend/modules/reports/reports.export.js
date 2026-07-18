@@ -31,20 +31,9 @@ function customerName(customer) {
   return name || customer.email || '';
 }
 
-function vehicleLabel(rentalItems = []) {
-  if (!rentalItems?.length) return '';
-  return rentalItems
-    .map((item) => {
-      const v = item.vehicle;
-      if (!v) return '';
-      return (
-        [v.make || v.brand, v.model, v.registrationNumber]
-          .filter(Boolean)
-          .join(' ')
-      );
-    })
-    .filter(Boolean)
-    .join('; ');
+function vehicleLabel(v) {
+  if (!v) return '';
+  return [v.brand, v.model, v.registrationNumber].filter(Boolean).join(' ');
 }
 
 function escapeCsv(value) {
@@ -65,19 +54,19 @@ export function getExportMeta(type, query = {}) {
 
 export function mapRentalsToRows(rentals = []) {
   return rentals.map((r) => ({
-    bookingNumber: r.bookingNumber || '',
+    bookingNumber: r.orderNumber || '',
     customer: customerName(r.customer),
     email: r.customer?.email || '',
-    vehicles: vehicleLabel(r.rentalItems),
-    status: r.status || '',
-    paymentStatus: r.paymentStatus || '',
+    vehicles: vehicleLabel(r.vehicle),
+    status: r.orderStatus || '',
+    paymentStatus: r.payment?.paymentStatus || '',
     pickupDate: formatDate(r.pickupDate),
     expectedReturnDate: formatDate(r.expectedReturnDate),
-    subtotal: formatMoney(r.subtotal),
-    tax: formatMoney(r.tax),
-    discount: formatMoney(r.discount),
-    lateFee: formatMoney(r.lateFee),
-    grandTotal: formatMoney(r.grandTotal),
+    subtotal: formatMoney(r.rentalAmount),
+    tax: formatMoney(r.payment?.taxAmount),
+    discount: formatMoney(0),
+    lateFee: formatMoney(r.securityDeposit?.penaltyAmount),
+    grandTotal: formatMoney(r.invoice?.totalAmount || r.payment?.totalAmount),
     createdAt: formatDateTime(r.createdAt),
   }));
 }
@@ -85,14 +74,14 @@ export function mapRentalsToRows(rentals = []) {
 export function mapRevenueToRows(payments = []) {
   return payments.map((p) => ({
     paymentId: p.id || '',
-    bookingNumber: p.rentalOrder?.bookingNumber || '',
-    customer: customerName(p.rentalOrder?.customer),
+    bookingNumber: p.order?.orderNumber || '',
+    customer: customerName(p.order?.customer),
     paymentMethod: p.paymentMethod || '',
     paymentStatus: p.paymentStatus || '',
-    amount: formatMoney(p.amount),
-    currency: p.currency || 'INR',
+    amount: formatMoney(p.totalAmount),
+    currency: 'INR',
     transactionId: p.transactionId || '',
-    paidAt: formatDateTime(p.paidAt),
+    paidAt: formatDateTime(p.paymentDate),
   }));
 }
 
