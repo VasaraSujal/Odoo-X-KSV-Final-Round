@@ -10,7 +10,6 @@ import {
   customerName,
   formatCurrency,
   formatDateTime,
-  vehicleLabel,
 } from '@/lib/format';
 
 function buildActivities({ recentRentals = [], recentPayments = [] }) {
@@ -18,12 +17,15 @@ function buildActivities({ recentRentals = [], recentPayments = [] }) {
 
   recentRentals.slice(0, 4).forEach((order) => {
     const isReturn =
-      order.status === 'COMPLETED' || Boolean(order.actualReturnDate);
+      order.orderStatus === 'Completed' || Boolean(order.actualReturnDate);
+    const vehicleName = order.vehicle
+      ? `${order.vehicle.brand} ${order.vehicle.model}`
+      : 'Vehicle';
 
     items.push({
       id: `rental-${order.id}`,
       title: isReturn ? 'Return completed' : 'Rental created',
-      description: `${customerName(order.customer)} · ${vehicleLabel(order.rentalItems)}`,
+      description: `${customerName(order.customer)} · ${vehicleName}`,
       time: formatDateTime(order.updatedAt || order.createdAt),
       icon: isReturn ? RotateCcw : ClipboardList,
       tone: isReturn ? 'success' : 'accent',
@@ -35,13 +37,13 @@ function buildActivities({ recentRentals = [], recentPayments = [] }) {
     items.push({
       id: `payment-${payment.id}`,
       title: 'Payment completed',
-      description: `${formatCurrency(payment.amount)} · ${customerName(
-        payment.rentalOrder?.customer
+      description: `${formatCurrency(payment.totalAmount)} · ${customerName(
+        payment.customer || payment.order?.customer
       )}`,
-      time: formatDateTime(payment.paidAt || payment.createdAt),
+      time: formatDateTime(payment.paymentDate || payment.createdAt),
       icon: CreditCard,
       tone: 'success',
-      sortAt: new Date(payment.paidAt || payment.createdAt).getTime(),
+      sortAt: new Date(payment.paymentDate || payment.createdAt).getTime(),
     });
   });
 

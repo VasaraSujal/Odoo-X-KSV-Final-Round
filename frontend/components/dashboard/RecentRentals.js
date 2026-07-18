@@ -12,7 +12,6 @@ import {
   customerName,
   formatCurrency,
   formatDate,
-  vehicleLabel,
 } from '@/lib/format';
 import notify from '@/lib/toast';
 
@@ -69,14 +68,16 @@ export default function RecentRentals({ rentals = [], loading }) {
                       {customerName(order.customer)}
                     </p>
                     <p className="text-[11px] text-muted">
-                      {order.bookingNumber || order.id?.slice(0, 8)}
+                      {order.orderNumber || order.id?.slice(0, 8)}
                     </p>
                   </td>
                   <td className="py-3.5 pr-3 text-secondary">
-                    {vehicleLabel(order.rentalItems)}
+                    {order.vehicle
+                      ? `${order.vehicle.brand} ${order.vehicle.model}`
+                      : '—'}
                   </td>
                   <td className="py-3.5 pr-3">
-                    <StatusBadge status={order.status} />
+                    <StatusBadge status={order.orderStatus} />
                   </td>
                   <td className="py-3.5 pr-3 text-secondary">
                     {formatDate(order.pickupDate)}
@@ -85,17 +86,13 @@ export default function RecentRentals({ rentals = [], loading }) {
                     {formatDate(order.expectedReturnDate)}
                   </td>
                   <td className="py-3.5 pr-3 font-medium tabular-nums text-primary">
-                    {formatCurrency(order.grandTotal)}
+                    {formatCurrency(order.rentalAmount)}
                   </td>
                   <td className="py-3.5 text-right">
                     <Link
-                      href={APP_ROUTES.ADMIN.RENTAL_ORDERS}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        notify.info('Rental detail view coming soon');
-                      }}
+                      href={APP_ROUTES.ADMIN.RENTAL_ORDER_DETAIL(order.id)}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-border text-muted transition hover:border-accent hover:text-accent"
-                      aria-label={`View rental ${order.bookingNumber || order.id}`}
+                      aria-label={`View rental ${order.orderNumber || order.id}`}
                     >
                       <Eye size={14} />
                     </Link>

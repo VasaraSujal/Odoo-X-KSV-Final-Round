@@ -13,10 +13,10 @@ import {
 import notify from '@/lib/toast';
 
 const methodLabel = {
-  CASH: 'Cash',
+  Cash: 'Cash',
   UPI: 'UPI',
-  CARD: 'Card',
-  NET_BANKING: 'Bank',
+  Card: 'Card',
+  Net_Banking: 'Bank',
 };
 
 export default function RecentPayments({ payments = [], loading }) {
@@ -70,21 +70,21 @@ export default function RecentPayments({ payments = [], loading }) {
                     {methodLabel[payment.paymentMethod] || payment.paymentMethod || '—'}
                   </td>
                   <td className="py-3.5 pr-3 text-secondary">
-                    {customerName(payment.rentalOrder?.customer)}
+                    {customerName(payment.customer || payment.order?.customer)}
                   </td>
                   <td className="py-3.5 pr-3 text-secondary">
-                    {payment.rentalOrder?.bookingNumber ||
-                      payment.rentalOrderId?.slice(0, 8) ||
+                    {payment.order?.orderNumber ||
+                      payment.orderId?.slice(0, 8) ||
                       '—'}
                   </td>
                   <td className="py-3.5 pr-3 font-medium tabular-nums text-primary">
-                    {formatCurrency(payment.amount)}
+                    {formatCurrency(payment.totalAmount)}
                   </td>
                   <td className="py-3.5 pr-3">
                     <StatusBadge status={payment.paymentStatus} />
                   </td>
                   <td className="py-3.5 text-secondary">
-                    {formatDate(payment.paidAt || payment.createdAt)}
+                    {formatDate(payment.paymentDate || payment.createdAt)}
                   </td>
                 </tr>
               ))}
