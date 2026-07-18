@@ -42,6 +42,27 @@ class AuthService {
     
     return { user: userWithoutPassword, token };
   }
+
+  async changePassword(userId, currentPassword, newPassword) {
+    const user = await authRepository.findUserById(userId);
+    if (!user) {
+      throw new ApiError(404, 'User not found');
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      throw new ApiError(400, 'Current password is incorrect');
+    }
+
+    if (currentPassword === newPassword) {
+      throw new ApiError(400, 'New password must be different from the current password');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await authRepository.updatePassword(userId, hashedPassword);
+
+    return null;
+  }
 }
 
 export default new AuthService();

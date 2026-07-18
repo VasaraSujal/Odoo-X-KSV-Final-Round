@@ -10,6 +10,7 @@ export const API_ROUTES = Object.freeze({
     LOGIN: '/auth/login',
     ME: '/auth/me',
     LOGOUT: '/auth/logout',
+    CHANGE_PASSWORD: '/auth/change-password',
   },
 
   USERS: {

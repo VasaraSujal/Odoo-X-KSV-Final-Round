@@ -21,10 +21,30 @@ const PORT = process.env.PORT || 5000;
 let server;
 
 const startServer = async () => {
+  const maxAttempts = 5;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await prisma.$connect();
+      console.log('Database connected successfully');
+      break;
+    } catch (error) {
+      const isLast = attempt === maxAttempts;
+      console.error(
+        `Database connect attempt ${attempt}/${maxAttempts} failed:`,
+        error.message
+      );
+      if (isLast) {
+        console.error(
+          'Failed to start server: cannot reach Neon. Open the Neon console to wake the project, check the connection string, then retry.'
+        );
+        process.exit(1);
+      }
+      // Neon idle compute often needs a few seconds to wake
+      await new Promise((resolve) => setTimeout(resolve, 3000 * attempt));
+    }
+  }
+
   try {
-    await prisma.$connect();
-    console.log('Database connected successfully');
-    
     server = app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });

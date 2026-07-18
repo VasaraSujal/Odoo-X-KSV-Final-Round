@@ -3,7 +3,6 @@ import {
   Car,
   Tags,
   CalendarRange,
-  BadgeIndianRupee,
   ClipboardList,
   FileText,
   CreditCard,
@@ -17,6 +16,10 @@ import {
 } from 'lucide-react';
 import { APP_ROUTES } from '@/constants/routes';
 
+/**
+ * Sidebar order follows rental business workflow:
+ * Overview → Fleet → Orders → Finance → Operations → Insights → Config
+ */
 export const ADMIN_NAV = [
   {
     id: 'dashboard',
@@ -44,13 +47,6 @@ export const ADMIN_NAV = [
     label: 'Rental Periods',
     href: APP_ROUTES.ADMIN.RENTAL_PERIODS,
     icon: CalendarRange,
-    enabled: true,
-  },
-  {
-    id: 'price-lists',
-    label: 'Price Lists',
-    href: APP_ROUTES.ADMIN.PRICE_LISTS,
-    icon: BadgeIndianRupee,
     enabled: true,
   },
   {
@@ -107,14 +103,21 @@ export const ADMIN_NAV = [
     label: 'Reports',
     href: APP_ROUTES.ADMIN.REPORTS,
     icon: BarChart3,
-    enabled: false,
+    enabled: true,
   },
   {
     id: 'settings',
     label: 'Settings',
     href: APP_ROUTES.ADMIN.SETTINGS,
     icon: Settings,
-    enabled: false,
+    enabled: true,
+  },
+  {
+    id: 'profile',
+    label: 'Profile',
+    href: APP_ROUTES.ADMIN.PROFILE,
+    icon: User,
+    enabled: true,
   },
 ];
 

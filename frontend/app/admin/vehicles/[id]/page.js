@@ -7,6 +7,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import MasterPage from '@/components/master/MasterPage';
 import StatusBadge from '@/components/master/StatusBadge';
 import VehicleImageGallery from '@/components/master/VehicleImageGallery';
+import VehiclePricingManager from '@/components/master/VehiclePricingManager';
 import ImageUploader from '@/components/forms/ImageUploader';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import Button from '@/components/ui/Button';
@@ -168,35 +169,11 @@ export default function VehicleDetailPage() {
             ) : null}
           </div>
 
-          <div className="surface-card p-6">
-            <SectionHeader
-              title="Price Lists"
-              description="Pricing entries linked to this vehicle"
-            />
-            {!vehicle.priceLists?.length ? (
-              <p className="text-sm text-muted">No price lists yet.</p>
-            ) : (
-              <ul className="space-y-2">
-                {vehicle.priceLists.map((pl) => (
-                  <li
-                    key={pl.id}
-                    className="flex items-center justify-between rounded-2xl border border-border px-4 py-3 text-sm"
-                  >
-                    <span className="font-medium text-primary">{pl.pricingType}</span>
-                    <span className="tabular-nums text-secondary">
-                      {formatCurrency(pl.price)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <Link
-              href={APP_ROUTES.ADMIN.PRICE_LIST_NEW}
-              className="mt-4 inline-block text-sm font-semibold text-accent"
-            >
-              Manage price lists →
-            </Link>
-          </div>
+          <VehiclePricingManager
+            vehicleId={id}
+            priceLists={vehicle.priceLists || []}
+            onChanged={load}
+          />
         </div>
 
         <div className="space-y-6">

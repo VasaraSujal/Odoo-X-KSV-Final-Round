@@ -33,6 +33,14 @@ class AuthController {
     });
     res.status(200).json(new ApiResponse(200, null, 'Logout successful'));
   });
+
+  changePassword = catchAsync(async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    await authService.changePassword(req.user.id, currentPassword, newPassword);
+    res
+      .status(200)
+      .json(new ApiResponse(200, null, 'Password changed successfully'));
+  });
 }
 
 export default new AuthController();

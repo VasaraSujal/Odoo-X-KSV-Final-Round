@@ -8,6 +8,17 @@ class AuthRepository {
   async findUserByEmail(email) {
     return prisma.user.findUnique({ where: { email } });
   }
+
+  async findUserById(id) {
+    return prisma.user.findUnique({ where: { id } });
+  }
+
+  async updatePassword(id, hashedPassword) {
+    return prisma.user.update({
+      where: { id },
+      data: { password: hashedPassword },
+    });
+  }
 }
 
 export default new AuthRepository();

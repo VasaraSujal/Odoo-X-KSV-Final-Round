@@ -11,6 +11,12 @@ const inter = Inter({
 export const metadata = {
   title: 'Car Rental Management System',
   description: 'Premium enterprise platform for vehicle rental operations.',
+  applicationName: 'CRMS',
+  icons: {
+    icon: [{ url: '/crms-icon.svg', type: 'image/svg+xml' }],
+    shortcut: '/crms-icon.svg',
+    apple: '/crms-icon.svg',
+  },
 };
 
 export default function RootLayout({ children }) {

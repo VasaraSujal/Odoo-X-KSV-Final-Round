@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react';
 import authService from '@/services/authService';
-import { clearAuthStorage, getToken, getUser } from '@/utils/storage';
+import { clearAuthStorage, getToken, getUser, setUser } from '@/utils/storage';
 
 export const AuthContext = createContext(null);
 
@@ -74,6 +74,20 @@ export function AuthProvider({ children }) {
     setTokenState(null);
   }, []);
 
+  const updateUser = useCallback((nextUser) => {
+    if (!nextUser) return;
+    setUser(nextUser);
+    setUserState(nextUser);
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    const profile = await authService.refreshProfile();
+    if (profile.success && profile.data) {
+      setUserState(profile.data);
+    }
+    return profile;
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -82,10 +96,12 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      updateUser,
+      refreshUser,
       loading,
       isAuthenticated: Boolean(token && user),
     }),
-    [user, token, login, register, logout, loading]
+    [user, token, login, register, logout, updateUser, refreshUser, loading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

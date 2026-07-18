@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Eye, Pencil, Plus, Ban, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Ban, Trash2 } from 'lucide-react';
 import MasterPage from '@/components/master/MasterPage';
 import DataTable from '@/components/tables/DataTable';
 import FilterPanel from '@/components/forms/FilterPanel';
@@ -194,19 +194,11 @@ export default function RentalOrdersPage() {
   return (
     <MasterPage
       title="Rental Orders"
-      description="Create and track fleet bookings end-to-end"
+      description="Track fleet bookings end-to-end"
       breadcrumbs={[
         { label: 'Admin', href: APP_ROUTES.ADMIN.ROOT },
         { label: 'Rental Orders' },
       ]}
-      actions={
-        <Link href={APP_ROUTES.ADMIN.RENTAL_ORDER_NEW}>
-          <Button size="sm">
-            <Plus size={14} />
-            New Rental
-          </Button>
-        </Link>
-      }
     >
       <div className="mb-4">
         <FilterPanel
@@ -248,7 +240,7 @@ export default function RentalOrdersPage() {
         pagination={pagination}
         onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
         emptyTitle="No rental orders"
-        emptyDescription="Create your first booking with the multi-step rental wizard."
+        emptyDescription="Rental bookings will appear here once customers place orders."
       />
 
       <ConfirmDialog

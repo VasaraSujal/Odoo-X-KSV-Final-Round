@@ -1,6 +1,6 @@
 'use client';
 
-import { Car, ClipboardPlus, CreditCard, BarChart3, Tags } from 'lucide-react';
+import { Car, CreditCard, BarChart3, Tags } from 'lucide-react';
 import SectionHeader from '@/components/dashboard/SectionHeader';
 import QuickActionCard from '@/components/dashboard/QuickActionCard';
 import { APP_ROUTES } from '@/constants/routes';
@@ -12,14 +12,6 @@ const ACTIONS = [
     href: APP_ROUTES.ADMIN.VEHICLE_NEW,
     icon: Car,
     tone: 'accent',
-    enabled: true,
-  },
-  {
-    title: 'Create Rental',
-    description: 'Start a new booking workflow',
-    href: APP_ROUTES.ADMIN.RENTAL_ORDER_NEW,
-    icon: ClipboardPlus,
-    tone: 'success',
     enabled: true,
   },
   {
@@ -36,7 +28,7 @@ const ACTIONS = [
     href: APP_ROUTES.ADMIN.REPORTS,
     icon: BarChart3,
     tone: 'secondary',
-    enabled: false,
+    enabled: true,
   },
   {
     title: 'Categories',
@@ -55,7 +47,7 @@ export default function QuickActions() {
         title="Quick Actions"
         description="Jump into common fleet and rental workflows"
       />
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {ACTIONS.map((action, index) => (
           <QuickActionCard key={action.title} {...action} delay={index * 0.05} />
         ))}

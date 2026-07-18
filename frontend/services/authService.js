@@ -49,6 +49,11 @@ const authService = {
     if (user) setUser(user);
     return parseApiResponse(response);
   },
+
+  async changePassword(payload) {
+    const response = await api.post(API_ROUTES.AUTH.CHANGE_PASSWORD, payload);
+    return parseApiResponse(response);
+  },
 };
 
 export default authService;

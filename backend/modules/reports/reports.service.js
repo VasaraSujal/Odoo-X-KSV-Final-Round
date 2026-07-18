@@ -24,8 +24,12 @@ class ReportsService {
     
     const payments = await prisma.payment.findMany({
       where,
-      include: { rentalOrder: true },
-      orderBy: { paidAt: 'desc' }
+      include: {
+        rentalOrder: {
+          include: { customer: true },
+        },
+      },
+      orderBy: { paidAt: 'desc' },
     });
     return payments;
   }
