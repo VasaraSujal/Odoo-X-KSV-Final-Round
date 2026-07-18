@@ -70,6 +70,7 @@ export const APP_ROUTES = Object.freeze({
     ROOT: '/customer',
     DASHBOARD: '/customer',
     VEHICLES: '/customer/vehicles',
+    CART: '/customer/cart',
     RENTALS: '/customer/rentals',
     PAYMENTS: '/customer/payments',
     PROFILE: '/customer/profile',
