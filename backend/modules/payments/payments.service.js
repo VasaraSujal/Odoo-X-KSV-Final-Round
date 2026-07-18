@@ -62,7 +62,7 @@ class PaymentService {
     let orderBy = { createdAt: 'desc' };
     if (query.sortBy) {
       const order = query.order === 'asc' ? 'asc' : 'desc';
-      if (['totalAmount', 'createdAt'].includes(query.sortBy)) {
+      if (['totalAmount', 'createdAt', 'paymentDate'].includes(query.sortBy)) {
         orderBy = { [query.sortBy]: order };
       }
     }

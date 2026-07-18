@@ -3,10 +3,10 @@ import prisma from '../../config/db.js';
 class AnalyticsService {
   async getRevenueTrend() {
     const trends = await prisma.payment.groupBy({
-      by: ['paidAt'],
-      _sum: { amount: true },
-      where: { paymentStatus: 'SUCCESS' },
-      orderBy: { paidAt: 'asc' }
+      by: ['paymentDate'],
+      _sum: { totalAmount: true },
+      where: { paymentStatus: 'Paid' },
+      orderBy: { paymentDate: 'asc' }
     });
     // In a real app we format this into daily/weekly bins.
     return trends;
