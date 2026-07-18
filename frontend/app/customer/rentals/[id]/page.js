@@ -211,6 +211,30 @@ export default function CustomerRentalDetailPage() {
             )}
           </div>
 
+          {/* Invoice Receipt */}
+          {order.invoice ? (
+            <div className="surface-card p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <FileText size={16} className="text-accent" />
+                <h2 className="text-sm font-semibold text-primary">Invoice Receipt</h2>
+              </div>
+              <div className="mb-2 text-xs font-semibold text-primary">
+                Invoice Number: {order.invoice.invoiceNumber}
+              </div>
+              <InfoRow label="Base Rent" value={formatCurrency(order.invoice.rentalAmount)} />
+              <InfoRow label="Tax Amount (18%)" value={formatCurrency(order.invoice.taxAmount)} />
+              <InfoRow label="Security Deposit" value={formatCurrency(order.invoice.depositAmount)} />
+              {Number(order.invoice.penaltyAmount) > 0 && (
+                <InfoRow label="Penalty / Late Fees" value={formatCurrency(order.invoice.penaltyAmount)} />
+              )}
+              <InfoRow label="Invoice Status" value={order.invoice.invoiceStatus} />
+              <div className="border-t border-border mt-3 pt-3 flex justify-between items-center">
+                <span className="text-sm font-bold text-primary">Total Amount</span>
+                <span className="text-base font-bold text-accent">{formatCurrency(order.invoice.totalAmount)}</span>
+              </div>
+            </div>
+          ) : null}
+
           {/* Security Deposit */}
           <div className="surface-card p-5">
             <div className="mb-3 flex items-center gap-2">
@@ -221,9 +245,20 @@ export default function CustomerRentalDetailPage() {
               <>
                 <InfoRow label="Deposit Amount" value={formatCurrency(deposit.depositAmount)} />
                 <InfoRow label="Status" value={deposit.depositStatus} />
-                {deposit.refundAmount > 0 && <InfoRow label="Refund" value={formatCurrency(deposit.refundAmount)} />}
-                {deposit.penaltyAmount > 0 && <InfoRow label="Penalty" value={formatCurrency(deposit.penaltyAmount)} />}
-                {deposit.penaltyReason && <InfoRow label="Reason" value={deposit.penaltyReason} />}
+                {deposit.depositStatus === 'Released' && (
+                  <>
+                    <InfoRow label="Refund Status" value={deposit.refundStatus} />
+                    <InfoRow label="Refund Amount" value={formatCurrency(deposit.refundAmount)} />
+                    {deposit.refundDate && (
+                      <InfoRow label="Refunded On" value={formatDate(deposit.refundDate)} />
+                    )}
+                    {deposit.refundMethod && (
+                      <InfoRow label="Refund Method" value={deposit.refundMethod} />
+                    )}
+                  </>
+                )}
+                {deposit.penaltyAmount > 0 && <InfoRow label="Penalty Deducted" value={formatCurrency(deposit.penaltyAmount)} />}
+                {deposit.penaltyReason && <InfoRow label="Penalty Reason" value={deposit.penaltyReason} />}
               </>
             ) : (
               <p className="text-xs text-muted">No deposit recorded for this booking.</p>
