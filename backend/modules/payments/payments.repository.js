@@ -21,7 +21,7 @@ class PaymentRepository {
         where,
         orderBy,
         include: {
-          order: { include: { customer: true } }
+          order: { include: { customer: true, securityDeposit: true, vehicle: true } }
         }
       })
     ]);
@@ -31,7 +31,7 @@ class PaymentRepository {
     return prisma.payment.findUnique({
       where: { id },
       include: {
-        order: { include: { customer: true } }
+        order: { include: { customer: true, securityDeposit: true, vehicle: true } }
       }
     });
   }

@@ -25,6 +25,7 @@ import PageLoader from '@/components/common/PageLoader';
 import ErrorState from '@/components/dashboard/ErrorState';
 import SectionHeader from '@/components/dashboard/SectionHeader';
 import rentalService from '@/services/rentalService';
+import securityDepositService from '@/services/securityDepositService';
 import { APP_ROUTES } from '@/constants/routes';
 import {
   customerName,
@@ -50,6 +51,35 @@ export default function RentalOrderDetailPage() {
   const [penaltyAmount, setPenaltyAmount] = useState('0');
   const [penaltyReason, setPenaltyReason] = useState('');
   const [returnRemarks, setReturnRemarks] = useState('Returned and inspected safely.');
+
+  // Manual Refund States
+  const [refundMethod, setRefundMethod] = useState('UPI');
+  const [refundRef, setRefundRef] = useState('');
+  const [refunding, setRefunding] = useState(false);
+
+  async function handleProcessRefund() {
+    if (!order?.securityDeposit?.id) return;
+    if (order.securityDeposit.refundStatus !== 'Pending') return;
+    if (refundMethod !== 'Cash' && !refundRef.trim()) {
+      notify.error('Please enter UPI or Bank transfer reference ID');
+      return;
+    }
+    setRefunding(true);
+    try {
+      await securityDepositService.refund(order.securityDeposit.id, {
+        penaltyAmount: Number(order.securityDeposit.penaltyAmount || 0),
+        penaltyReason: order.securityDeposit.penaltyReason || null,
+        refundMethod,
+        remarks: refundRef
+      });
+      notify.success('Security deposit refunded successfully');
+      load();
+    } catch (err) {
+      notify.error(getErrorMessage(err));
+    } finally {
+      setRefunding(false);
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -399,6 +429,47 @@ export default function RentalOrderDetailPage() {
                 <InfoRow label="Refund Status" value={<StatusBadge status={order.securityDeposit.refundStatus} />} />
                 {order.securityDeposit.refundDate && (
                   <InfoRow label="Refund Date" value={formatDateTime(order.securityDeposit.refundDate)} />
+                )}
+                {order.securityDeposit.refundMethod && (
+                  <InfoRow label="Refund Method" value={order.securityDeposit.refundMethod} />
+                )}
+                {order.securityDeposit.remarks && (
+                  <div className="text-xs bg-slate-50 p-2 rounded border border-border leading-normal">
+                    Refund Remarks/UTR: {order.securityDeposit.remarks}
+                  </div>
+                )}
+
+                {order.securityDeposit.depositStatus === 'Released' && order.securityDeposit.refundStatus === 'Pending' && (
+                  <div className="mt-4 border-t border-border pt-4 space-y-3">
+                    <h4 className="text-xs font-bold text-primary uppercase">Process Manual Deposit Refund</h4>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Select
+                        label="Refund Method"
+                        value={refundMethod}
+                        onChange={(e) => setRefundMethod(e.target.value)}
+                        options={[
+                          { value: 'UPI', label: 'UPI' },
+                          { value: 'Cash', label: 'Cash' },
+                          { value: 'Bank_Transfer', label: 'Bank Transfer' },
+                        ]}
+                      />
+                      <Input
+                        label="Refund UTR / Reference"
+                        placeholder="e.g. UTR Ref or Cash details"
+                        value={refundRef}
+                        onChange={(e) => setRefundRef(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex justify-end">
+                      <Button
+                        size="xs"
+                        onClick={handleProcessRefund}
+                        loading={refunding}
+                      >
+                        Process Refund
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </dl>
             </InfoCard>

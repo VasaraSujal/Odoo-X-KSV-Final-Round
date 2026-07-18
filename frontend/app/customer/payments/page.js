@@ -29,17 +29,20 @@ export default function CustomerPaymentsPage() {
       const depositsList = depRes.data?.deposits || [];
 
       // Map payments to standard transaction format
-      const mappedPayments = paymentsList.map((p) => ({
-        id: p.id,
-        type: 'payment',
-        orderId: p.orderId,
-        orderNumber: p.order?.orderNumber || p.orderId?.slice(0, 8),
-        method: p.paymentMethod,
-        date: p.paymentDate || p.createdAt,
-        amount: Number(p.totalAmount),
-        status: p.paymentStatus,
-        transactionId: p.transactionId,
-      }));
+      const mappedPayments = paymentsList.map((p) => {
+        const depositAmt = Number(p.order?.securityDeposit?.depositAmount || 0);
+        return {
+          id: p.id,
+          type: 'payment',
+          orderId: p.orderId,
+          orderNumber: p.order?.orderNumber || p.orderId?.slice(0, 8),
+          method: p.paymentMethod,
+          date: p.paymentDate || p.createdAt,
+          amount: Number(p.totalAmount) + depositAmt,
+          status: p.paymentStatus,
+          transactionId: p.transactionId,
+        };
+      });
 
       // Map security deposit refunds to standard transaction format (only if released/refunded)
       const mappedRefunds = depositsList
