@@ -2,26 +2,20 @@ import {
   LayoutDashboard,
   Car,
   Tags,
-  CalendarRange,
   ClipboardList,
   Users,
-  FileText,
   CreditCard,
   Shield,
-  PackageCheck,
-  PackageOpen,
-  AlertTriangle,
   BarChart3,
-  Settings,
   User,
   ShoppingCart,
   Receipt,
+  CalendarRange,
 } from 'lucide-react';
 import { APP_ROUTES } from '@/constants/routes';
 
 /**
- * Sidebar order follows rental business workflow:
- * Overview → Fleet → Orders → Finance → Operations → Insights → Config
+ * Sidebar navigation items aligned with restructured backend ERP modules.
  */
 export const ADMIN_NAV = [
   {
@@ -46,13 +40,6 @@ export const ADMIN_NAV = [
     enabled: true,
   },
   {
-    id: 'rental-periods',
-    label: 'Rental Periods',
-    href: APP_ROUTES.ADMIN.RENTAL_PERIODS,
-    icon: CalendarRange,
-    enabled: true,
-  },
-  {
     id: 'rental-orders',
     label: 'Rental Orders',
     href: APP_ROUTES.ADMIN.RENTAL_ORDERS,
@@ -64,13 +51,6 @@ export const ADMIN_NAV = [
     label: 'Customers',
     href: APP_ROUTES.ADMIN.CUSTOMERS,
     icon: Users,
-    enabled: true,
-  },
-  {
-    id: 'quotations',
-    label: 'Quotations',
-    href: APP_ROUTES.ADMIN.QUOTATIONS,
-    icon: FileText,
     enabled: true,
   },
   {
@@ -88,38 +68,10 @@ export const ADMIN_NAV = [
     enabled: true,
   },
   {
-    id: 'pickups',
-    label: 'Pickups',
-    href: APP_ROUTES.ADMIN.PICKUPS,
-    icon: PackageCheck,
-    enabled: true,
-  },
-  {
-    id: 'returns',
-    label: 'Returns',
-    href: APP_ROUTES.ADMIN.RETURNS,
-    icon: PackageOpen,
-    enabled: true,
-  },
-  {
-    id: 'penalties',
-    label: 'Penalties',
-    href: APP_ROUTES.ADMIN.PENALTIES,
-    icon: AlertTriangle,
-    enabled: true,
-  },
-  {
     id: 'reports',
     label: 'Reports',
     href: APP_ROUTES.ADMIN.REPORTS,
     icon: BarChart3,
-    enabled: true,
-  },
-  {
-    id: 'settings',
-    label: 'Settings',
-    href: APP_ROUTES.ADMIN.SETTINGS,
-    icon: Settings,
     enabled: true,
   },
   {

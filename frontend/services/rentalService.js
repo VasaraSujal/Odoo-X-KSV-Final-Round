@@ -38,20 +38,13 @@ const rentalService = {
     return parseApiResponse(response);
   },
 
-  async getItems(orderId) {
-    const response = await api.get(API_ROUTES.RENTAL_ORDERS.ITEMS(orderId));
+  async pickup(id, pickupOtp) {
+    const response = await api.patch(API_ROUTES.RENTAL_ORDERS.PICKUP(id), { pickupOtp });
     return parseApiResponse(response);
   },
 
-  async addItem(orderId, vehicleId) {
-    const response = await api.post(API_ROUTES.RENTAL_ORDERS.ITEMS(orderId), {
-      vehicleId,
-    });
-    return parseApiResponse(response);
-  },
-
-  async removeItem(itemId) {
-    const response = await api.delete(API_ROUTES.RENTAL_ITEMS.BY_ID(itemId));
+  async returnVehicle(id, payload) {
+    const response = await api.patch(API_ROUTES.RENTAL_ORDERS.RETURN(id), payload);
     return parseApiResponse(response);
   },
 };

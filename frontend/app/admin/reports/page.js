@@ -43,13 +43,6 @@ const REPORTS = [
     tone: 'warning',
   },
   {
-    title: 'Penalty Report',
-    description: 'Late fees and penalty amounts by type and period.',
-    href: APP_ROUTES.ADMIN.REPORTS_PENALTIES,
-    icon: AlertTriangle,
-    tone: 'danger',
-  },
-  {
     title: 'Analytics Summary',
     description: 'Revenue and rental trend charts across the selected window.',
     href: APP_ROUTES.ADMIN.REPORTS_ANALYTICS,

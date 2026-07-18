@@ -1,18 +1,18 @@
 /**
- * Master data option constants aligned with backend seed / conventions.
+ * Master data option constants aligned with backend database enums.
  */
 export const VEHICLE_AVAILABILITY = Object.freeze({
-  AVAILABLE: 'AVAILABLE',
-  BOOKED: 'BOOKED',
-  UNDER_MAINTENANCE: 'UNDER_MAINTENANCE',
-  OUT_OF_SERVICE: 'OUT_OF_SERVICE',
+  Available: 'Available',
+  Reserved: 'Reserved',
+  Rented: 'Rented',
+  Maintenance: 'Maintenance',
 });
 
 export const AVAILABILITY_OPTIONS = [
-  { value: 'AVAILABLE', label: 'Available' },
-  { value: 'BOOKED', label: 'Booked / Rented' },
-  { value: 'UNDER_MAINTENANCE', label: 'Maintenance' },
-  { value: 'OUT_OF_SERVICE', label: 'Out of Service' },
+  { value: 'Available', label: 'Available' },
+  { value: 'Reserved', label: 'Reserved' },
+  { value: 'Rented', label: 'Rented' },
+  { value: 'Maintenance', label: 'Maintenance' },
 ];
 
 export const FUEL_OPTIONS = [
@@ -29,11 +29,10 @@ export const TRANSMISSION_OPTIONS = [
 ];
 
 export const PRICING_TYPE_OPTIONS = [
-  { value: 'Hourly', label: 'Hourly' },
-  { value: 'Daily', label: 'Daily' },
-  { value: 'Weekly', label: 'Weekly' },
-  { value: 'Monthly', label: 'Monthly' },
-  { value: 'Weekend', label: 'Weekend' },
+  { value: 'Hour', label: 'Hourly' },
+  { value: 'Day', label: 'Daily' },
+  { value: 'Week', label: 'Weekly' },
+  { value: 'Month', label: 'Monthly' },
 ];
 
 export const STATUS_OPTIONS = [

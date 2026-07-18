@@ -7,7 +7,6 @@ import Footer from '@/components/layout/Footer';
 import RoleGuard from '@/components/common/RoleGuard';
 import { ROLES } from '@/constants/roles';
 import categoryService from '@/services/categoryService';
-import rentalPeriodService from '@/services/rentalPeriodService';
 
 const COLLAPSE_KEY = 'crms_admin_sidebar_collapsed';
 
@@ -15,7 +14,6 @@ const COLLAPSE_KEY = 'crms_admin_sidebar_collapsed';
 function prefetchAdminLookups() {
   Promise.allSettled([
     categoryService.getAll(),
-    rentalPeriodService.getAll(),
   ]).catch(() => {});
 }
 

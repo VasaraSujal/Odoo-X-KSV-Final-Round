@@ -24,7 +24,7 @@ const securityDepositService = {
   },
 
   async refund(id, payload) {
-    const response = await api.patch(API_ROUTES.SECURITY_DEPOSITS.REFUND(id), payload);
+    const response = await api.post(API_ROUTES.SECURITY_DEPOSITS.REFUND(id), payload);
     return parseApiResponse(response);
   },
 };

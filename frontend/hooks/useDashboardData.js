@@ -5,7 +5,6 @@ import dashboardService from '@/services/dashboardService';
 import analyticsService from '@/services/analyticsService';
 import rentalService from '@/services/rentalService';
 import paymentService from '@/services/paymentService';
-import penaltyService from '@/services/penaltyService';
 import securityDepositService from '@/services/securityDepositService';
 import { getErrorMessage } from '@/lib/apiResponse';
 import {
@@ -50,7 +49,6 @@ function mapDashboardPayload(results) {
     rentalTrendRes,
     recentRentalsRes,
     recentPaymentsRes,
-    penaltiesRes,
     depositsRes,
   ] = results.map((r) => (r?.__error ? null : r));
 
@@ -84,14 +82,14 @@ function mapDashboardPayload(results) {
     todayOps: rentalsTodayRes?.data || { todayPickups: 0, todayReturns: 0 },
     vehiclesByCategory: vehiclesByCatRes?.data?.byCategory || [],
     paymentsSummary,
-    penaltyCount: toNumber(penaltiesRes?.data?.pagination?.total),
+    penaltyCount: 0,
     depositCount: toNumber(depositsRes?.data?.pagination?.total),
     recentRentals,
     recentPayments,
     paymentMethods: aggregatePaymentMethods(recentPayments),
     revenueTrend: binByDay(revenueTrendRows, {
-      dateKey: 'paidAt',
-      valueAccessor: (row) => row?._sum?.amount,
+      dateKey: 'paymentDate',
+      valueAccessor: (row) => row?._sum?.totalAmount,
       days: 14,
     }),
     rentalTrend: binByDay(rentalTrendRows, {
@@ -137,11 +135,10 @@ export default function useDashboardData() {
       safe(
         paymentService.getPayments({
           limit: 12,
-          sortBy: 'paidAt',
+          sortBy: 'createdAt',
           order: 'desc',
         })
       ),
-      safe(penaltyService.getPenalties({ limit: 1, page: 1 })),
       safe(securityDepositService.getDeposits({ limit: 1, page: 1 })),
     ]);
 
