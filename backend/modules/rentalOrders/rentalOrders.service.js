@@ -80,7 +80,8 @@ class RentalOrderService {
           rentalAmount,
           taxAmount,
           totalAmount,
-          paymentMethod: 'UPI',
+          paymentMethod: data.paymentMethod || 'UPI',
+          transactionId: data.transactionId || null,
           paymentStatus: 'Pending'
         }
       });
@@ -93,23 +94,6 @@ class RentalOrderService {
           depositAmount: vehicle.securityDeposit,
           refundStatus: 'Pending',
           depositStatus: 'Held'
-        }
-      });
-
-      // Automatically create an Invoice record for the initial total (rental + tax + security deposit)
-      const invoiceNumber = `INV-${orderNumber.split('-')[2] || order.id.slice(0, 8)}`;
-      await tx.invoice.create({
-        data: {
-          invoiceNumber,
-          orderId: order.id,
-          customerId: order.customerId,
-          paymentId: payment.id,
-          rentalAmount,
-          taxAmount,
-          depositAmount: vehicle.securityDeposit,
-          penaltyAmount: 0,
-          totalAmount: totalAmount + Number(vehicle.securityDeposit),
-          invoiceStatus: 'Pending',
         }
       });
 

@@ -212,6 +212,12 @@ export default function RentalOrderDetailPage() {
                 label="Rental Payment status"
                 value={<StatusBadge status={order.payment?.paymentStatus || 'Pending'} />}
               />
+              {order.payment?.paymentMethod && (
+                <InfoRow label="Payment Method" value={order.payment.paymentMethod} />
+              )}
+              {order.payment?.transactionId && (
+                <InfoRow label="Payment Reference ID" value={<span className="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-800 font-bold">{order.payment.transactionId}</span>} />
+              )}
               <InfoRow label="Customer" value={customerName(order.customer)} />
               <InfoRow label="Email" value={order.customer?.email} />
               <InfoRow label="Phone" value={order.customer?.phone || '—'} />
@@ -429,7 +435,7 @@ export default function RentalOrderDetailPage() {
         }
         description={
           confirm?.type === 'confirm'
-            ? 'Vehicle availability status will change to Reserved.'
+            ? `Please verify payment before confirming. Method: ${order.payment?.paymentMethod || 'None'}. Reference UTR ID: ${order.payment?.transactionId || 'None'}. Vehicle status will change to Reserved.`
             : confirm?.type === 'cancel'
               ? 'Vehicle availability status will be released back to Available.'
               : 'This permanently removes the booking from records.'

@@ -80,6 +80,8 @@ export default function CustomerVehicleDetailPage() {
   const [returnDate, setReturnDate] = useState('');       // YYYY-MM-DD
   // pickupType must match backend enum exactly
   const [pickupType, setPickupType] = useState('Store_Pickup');
+  const [paymentMethod, setPaymentMethod] = useState('UPI'); // 'UPI' | 'Card' | 'Cash'
+  const [transactionId, setTransactionId] = useState('');
   const [booking, setBooking] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -141,6 +143,9 @@ export default function CustomerVehicleDetailPage() {
     if (new Date(returnDate) <= new Date(pickupDate)) {
       notify.error('Return date must be after pickup date'); return;
     }
+    if (paymentMethod !== 'Cash' && !transactionId.trim()) {
+      notify.error('Please enter the payment transaction reference ID'); return;
+    }
 
     setBooking(true);
     try {
@@ -151,6 +156,8 @@ export default function CustomerVehicleDetailPage() {
         expectedReturnDate: toISODateTime(returnDate),
         rentalUnit,                          // derived from date diff
         rentalDuration,                      // derived from date diff
+        paymentMethod,                       // 'Cash' | 'Card' | 'UPI'
+        transactionId: paymentMethod === 'Cash' ? `CASH-${Date.now()}` : transactionId,
       };
 
       const res = await rentalService.create(payload);
@@ -388,6 +395,102 @@ export default function CustomerVehicleDetailPage() {
                     🚚 Home Delivery
                   </button>
                 </div>
+              </div>
+
+              {/* Payment Method */}
+              <div className="mb-4">
+                <label className="mb-1.5 block text-xs font-semibold text-muted uppercase tracking-wide">
+                  Payment Method
+                </label>
+                <div className="flex gap-2 mb-3">
+                  {['UPI', 'Card', 'Cash'].map((method) => (
+                    <button
+                      key={method}
+                      type="button"
+                      onClick={() => {
+                        setPaymentMethod(method);
+                        setTransactionId('');
+                      }}
+                      className={`flex-1 rounded-xl border py-2 text-xs font-semibold transition
+                        ${paymentMethod === method ? 'border-accent bg-accent/10 text-accent' : 'border-border text-muted hover:border-accent/50'}`}
+                    >
+                      {method === 'UPI' ? '📱 UPI' : method === 'Card' ? '💳 Card' : '💵 Cash'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* UPI QR Payment */}
+                {paymentMethod === 'UPI' && (
+                  <div className="rounded-xl border border-border p-3 bg-slate-50 space-y-3">
+                    <div className="text-center space-y-1.5">
+                      <p className="text-[11px] font-semibold text-muted uppercase">Scan & Pay ₹{totalPayable}</p>
+                      {/* Modern CSS QR Code Mock */}
+                      <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-xl bg-white border border-border p-2">
+                        <div className="h-full w-full bg-[linear-gradient(45deg,#111_25%,transparent_25%),linear-gradient(-45deg,#111_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#111_75%),linear-gradient(-45deg,transparent_75%,#111_75%)] bg-[size:10px_10px] opacity-75" />
+                      </div>
+                      <p className="text-[10px] text-muted leading-tight">Please scan the QR code using any UPI app (GPay/PhonePe/Paytm) to complete payment.</p>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[10px] font-semibold text-muted uppercase">UTR/Transaction Reference ID</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 12-digit UPI reference number"
+                        value={transactionId}
+                        onChange={(e) => setTransactionId(e.target.value)}
+                        className="input-field w-full text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Card Payment */}
+                {paymentMethod === 'Card' && (
+                  <div className="rounded-xl border border-border p-3 bg-slate-50 space-y-3">
+                    <p className="text-[10px] font-semibold text-muted uppercase">Enter Card Details</p>
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        placeholder="Card Number (16-digit)"
+                        maxLength={16}
+                        className="input-field w-full text-xs"
+                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="MM/YY"
+                          maxLength={5}
+                          className="input-field w-1/2 text-xs"
+                        />
+                        <input
+                          type="password"
+                          placeholder="CVV"
+                          maxLength={3}
+                          className="input-field w-1/2 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[10px] font-semibold text-muted uppercase">Payment Transaction ID</label>
+                        <input
+                          type="text"
+                          placeholder="Reference number or card holder name"
+                          value={transactionId}
+                          onChange={(e) => setTransactionId(e.target.value)}
+                          className="input-field w-full text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Cash payment info */}
+                {paymentMethod === 'Cash' && (
+                  <div className="rounded-xl border border-border p-3 bg-slate-50">
+                    <p className="text-[11px] font-semibold text-amber-700">💵 Pay on Handover</p>
+                    <p className="text-[10px] text-muted mt-1 leading-tight">
+                      You can pay the total amount of ₹{totalPayable} in cash directly to our executive at the time of pickup or delivery.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Price Summary */}

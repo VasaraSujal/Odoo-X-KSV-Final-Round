@@ -10,7 +10,9 @@ export const createRentalOrderSchema = z.object({
     expectedReturnDate: z.string().datetime(),
     rentalUnit: z.enum(['Hour', 'Day', 'Week', 'Month']),
     rentalDuration: z.number().int().positive(),
-    remarks: z.string().optional().nullable()
+    remarks: z.string().optional().nullable(),
+    paymentMethod: z.enum(['Cash', 'Card', 'UPI', 'Net_Banking']).default('UPI'),
+    transactionId: z.string().optional().nullable()
   })
 }).refine(data => new Date(data.body.pickupDate) > new Date(Date.now() - 86400000), {
   message: 'Pickup date cannot be in the past',
