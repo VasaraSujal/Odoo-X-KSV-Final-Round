@@ -7,10 +7,9 @@ class VehicleService {
     const category = await categoryRepository.findById(data.categoryId);
     if (!category) throw new ApiError(400, 'Invalid category ID');
 
-    const existing = await vehicleRepository.findByRegistrationOrVin(data.registrationNumber, data.vin);
+    const existing = await vehicleRepository.findByRegistration(data.registrationNumber);
     if (existing) {
-      if (existing.registrationNumber === data.registrationNumber) throw new ApiError(400, 'Registration number already exists');
-      if (existing.vin === data.vin) throw new ApiError(400, 'VIN already exists');
+      throw new ApiError(400, 'Registration number already exists');
     }
     
     return vehicleRepository.create(data);
@@ -28,13 +27,13 @@ class VehicleService {
     if (query.category) where.categoryId = query.category;
     if (query.fuelType) where.fuelType = query.fuelType;
     if (query.transmission) where.transmission = query.transmission;
-    if (query.availability) where.availabilityStatus = query.availability;
+    if (query.status) where.status = query.status;
     if (query.year) where.year = parseInt(query.year);
 
     let orderBy = {};
     if (query.sortBy) {
       const order = query.order === 'desc' ? 'desc' : 'asc';
-      if (['brand', 'year', 'basePrice', 'createdAt'].includes(query.sortBy)) {
+      if (['brand', 'year', 'rentPerDay', 'createdAt'].includes(query.sortBy)) {
         orderBy[query.sortBy] = order;
       }
     } else {
@@ -63,13 +62,10 @@ class VehicleService {
       if (!category) throw new ApiError(400, 'Invalid category ID');
     }
 
-    if (data.registrationNumber || data.vin) {
-      const existing = await vehicleRepository.findByRegistrationOrVin(
-        data.registrationNumber || vehicle.registrationNumber, 
-        data.vin || vehicle.vin
-      );
+    if (data.registrationNumber) {
+      const existing = await vehicleRepository.findByRegistration(data.registrationNumber);
       if (existing && existing.id !== id) {
-        throw new ApiError(400, 'Registration number or VIN already exists');
+        throw new ApiError(400, 'Registration number already exists');
       }
     }
 
@@ -79,11 +75,12 @@ class VehicleService {
   async delete(id) {
     const vehicle = await vehicleRepository.findById(id);
     if (!vehicle) throw new ApiError(404, 'Vehicle not found');
-    if (vehicle._count.rentalItems > 0) {
-      throw new ApiError(400, 'Cannot delete vehicle as it is linked to rental items');
+    if (vehicle._count.rentalOrders > 0) {
+      throw new ApiError(400, 'Cannot delete vehicle as it is linked to rental orders');
     }
     await vehicleRepository.delete(id);
     return true;
   }
 }
+
 export default new VehicleService();

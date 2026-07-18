@@ -19,7 +19,8 @@ class UserService {
 
     const where = {};
     if (query.role) where.role = query.role;
-    if (query.status) where.status = query.status;
+    if (query.accountStatus) where.accountStatus = query.accountStatus;
+    
     if (query.search) {
       const q = String(query.search).trim();
       if (q) {
@@ -35,7 +36,7 @@ class UserService {
     let orderBy = { createdAt: 'desc' };
     if (query.sortBy) {
       const order = query.order === 'asc' ? 'asc' : 'desc';
-      if (['createdAt', 'firstName', 'lastName', 'email', 'lastLogin'].includes(query.sortBy)) {
+      if (['createdAt', 'firstName', 'lastName', 'email'].includes(query.sortBy)) {
         orderBy = { [query.sortBy]: order };
       }
     }

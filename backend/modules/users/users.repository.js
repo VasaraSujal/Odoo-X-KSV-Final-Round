@@ -8,9 +8,12 @@ const USER_SELECT = {
   phone: true,
   profileImage: true,
   role: true,
-  status: true,
-  emailVerified: true,
-  lastLogin: true,
+  accountStatus: true,
+  isVerified: true,
+  dateOfBirth: true,
+  gender: true,
+  drivingLicenseNo: true,
+  drivingLicenseImage: true,
   createdAt: true,
   updatedAt: true,
 };
@@ -33,10 +36,9 @@ class UserRepository {
           take: 20,
           select: {
             id: true,
-            bookingNumber: true,
-            status: true,
-            paymentStatus: true,
-            grandTotal: true,
+            orderNumber: true,
+            orderStatus: true,
+            rentalAmount: true,
             pickupDate: true,
             expectedReturnDate: true,
             createdAt: true,
@@ -64,10 +66,33 @@ class UserRepository {
   }
 
   async update(id, data) {
-    const { firstName, lastName, phone, profileImage } = data;
+    const {
+      firstName,
+      lastName,
+      phone,
+      profileImage,
+      dateOfBirth,
+      gender,
+      drivingLicenseNo,
+      drivingLicenseImage,
+      accountStatus,
+      isVerified,
+    } = data;
+
     return prisma.user.update({
       where: { id },
-      data: { firstName, lastName, phone, profileImage },
+      data: {
+        firstName,
+        lastName,
+        phone,
+        profileImage,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+        gender,
+        drivingLicenseNo,
+        drivingLicenseImage,
+        accountStatus,
+        isVerified,
+      },
       select: USER_SELECT,
     });
   }

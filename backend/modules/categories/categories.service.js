@@ -3,27 +3,31 @@ import ApiError from '../../utils/ApiError.js';
 
 class CategoryService {
   async createCategory(data) {
-    const exists = await categoryRepository.findByName(data.name);
+    const exists = await categoryRepository.findByCategoryName(data.categoryName);
     if (exists) throw new ApiError(400, 'Category name already exists');
     return categoryRepository.create(data);
   }
+
   async getAllCategories() {
     return categoryRepository.findAll();
   }
+
   async getCategoryById(id) {
     const category = await categoryRepository.findById(id);
     if (!category) throw new ApiError(404, 'Category not found');
     return category;
   }
+
   async updateCategory(id, data) {
     const category = await categoryRepository.findById(id);
     if (!category) throw new ApiError(404, 'Category not found');
-    if (data.name && data.name !== category.name) {
-      const exists = await categoryRepository.findByName(data.name);
+    if (data.categoryName && data.categoryName !== category.categoryName) {
+      const exists = await categoryRepository.findByCategoryName(data.categoryName);
       if (exists) throw new ApiError(400, 'Category name already exists');
     }
     return categoryRepository.update(id, data);
   }
+
   async deleteCategory(id) {
     const category = await categoryRepository.findById(id);
     if (!category) throw new ApiError(404, 'Category not found');
@@ -34,4 +38,5 @@ class CategoryService {
     return true;
   }
 }
+
 export default new CategoryService();

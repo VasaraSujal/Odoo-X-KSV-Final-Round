@@ -10,8 +10,8 @@ class CategoryRepository {
   async findById(id) {
     return prisma.category.findUnique({ where: { id }, include: { _count: { select: { vehicles: true } } } });
   }
-  async findByName(name) {
-    return prisma.category.findUnique({ where: { name } });
+  async findByCategoryName(categoryName) {
+    return prisma.category.findUnique({ where: { categoryName } });
   }
   async update(id, data) {
     return prisma.category.update({ where: { id }, data });
