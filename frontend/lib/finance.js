@@ -27,20 +27,23 @@ export const DEPOSIT_STATUS_OPTIONS = [
 export function remainingDeposit(deposit) {
   if (!deposit) return 0;
   return (
-    Number(deposit.amountCollected || 0) -
-    Number(deposit.amountRefunded || 0) -
-    Number(deposit.damageCost || 0)
+    Number(deposit.depositAmount || 0) -
+    Number(deposit.refundAmount || 0) -
+    Number(deposit.penaltyAmount || 0)
   );
 }
 
 export function sumSuccessfulPayments(payments = []) {
   return payments
-    .filter((p) => p.paymentStatus === 'SUCCESS')
-    .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    .filter((p) => {
+      const status = String(p.paymentStatus || '').toUpperCase();
+      return status === 'PAID' || status === 'SUCCESS';
+    })
+    .reduce((sum, p) => sum + Number(p.totalAmount || p.amount || 0), 0);
 }
 
 export function computeBalanceFromOrder(order, payments = []) {
-  const total = Number(order?.grandTotal || 0);
+  const total = Number(order?.rentalAmount || order?.grandTotal || 0);
   const paid = sumSuccessfulPayments(payments);
   return Math.max(0, total - paid);
 }

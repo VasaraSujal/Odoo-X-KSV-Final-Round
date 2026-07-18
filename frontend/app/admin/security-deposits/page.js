@@ -60,11 +60,11 @@ export default function SecurityDepositsPage() {
 
   const stats = useMemo(() => {
     const collected = deposits.reduce(
-      (sum, d) => sum + Number(d.amountCollected || 0),
+      (sum, d) => sum + Number(d.depositAmount || 0),
       0
     );
     const refunded = deposits.reduce(
-      (sum, d) => sum + Number(d.amountRefunded || 0),
+      (sum, d) => sum + Number(d.refundAmount || 0),
       0
     );
     const held = deposits.reduce((sum, d) => sum + remainingDeposit(d), 0);
@@ -78,23 +78,23 @@ export default function SecurityDepositsPage() {
       render: (_, row) => (
         <div>
           <p className="font-medium text-primary">
-            {row.rentalOrder?.bookingNumber || '—'}
+            {row.order?.orderNumber || '—'}
           </p>
           <p className="text-[11px] text-muted">
-            {customerName(row.rentalOrder?.customer)}
+            {customerName(row.order?.customer || row.customer)}
           </p>
         </div>
       ),
     },
     {
-      key: 'amountCollected',
+      key: 'depositAmount',
       header: 'Collected',
       render: (v) => (
         <span className="font-semibold tabular-nums">{formatCurrency(v)}</span>
       ),
     },
     {
-      key: 'amountRefunded',
+      key: 'refundAmount',
       header: 'Refunded',
       render: (v) => formatCurrency(v),
     },
@@ -127,7 +127,7 @@ export default function SecurityDepositsPage() {
               <Eye size={14} />
             </Button>
           </Link>
-          {row.refundStatus !== 'REFUNDED' ? (
+          {String(row.refundStatus || '').toUpperCase() !== 'REFUNDED' && row.depositStatus === 'Released' ? (
             <Link href={APP_ROUTES.ADMIN.SECURITY_DEPOSIT_REFUND(row.id)}>
               <Button variant="ghost" size="sm" aria-label="Refund deposit">
                 <Undo2 size={14} />

@@ -20,7 +20,8 @@ const STATUS_META = {
 
 export default function PaymentStatusBadge({ status, label }) {
   if (!status && !label) return <Badge>—</Badge>;
-  const meta = STATUS_META[status] || {
+  const key = String(status || '').toUpperCase();
+  const meta = STATUS_META[key] || {
     label: label || status || '—',
     tone: 'default',
   };

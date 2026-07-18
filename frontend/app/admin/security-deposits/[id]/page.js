@@ -38,9 +38,9 @@ export default function DepositDetailPage() {
       const result = await securityDepositService.getById(id);
       const data = result.data;
       setDeposit(data);
-      if (data?.rentalOrderId) {
+      if (data?.orderId) {
         const orderResult = await rentalService.getRentalOrderById(
-          data.rentalOrderId
+          data.orderId
         );
         setOrder(orderResult.data);
       }
@@ -79,15 +79,17 @@ export default function DepositDetailPage() {
     );
   }
 
-  const rental = order || deposit.rentalOrder;
+  const rental = order || deposit.order;
   const remaining = remainingDeposit(deposit);
-  const canRefund =
-    deposit.refundStatus !== 'REFUNDED' && rental?.status === 'COMPLETED';
+  
+  const isRefunded = String(deposit.refundStatus || '').toUpperCase() === 'REFUNDED';
+  const isCompleted = String(rental?.orderStatus || '').toUpperCase() === 'COMPLETED';
+  const canRefund = !isRefunded && isCompleted && deposit.depositStatus === 'Released';
 
   return (
     <MasterPage
       title="Deposit Details"
-      description={formatCurrency(deposit.amountCollected)}
+      description={formatCurrency(deposit.depositAmount)}
       backHref={APP_ROUTES.ADMIN.SECURITY_DEPOSITS}
       breadcrumbs={[
         { label: 'Admin', href: APP_ROUTES.ADMIN.ROOT },
@@ -115,29 +117,31 @@ export default function DepositDetailPage() {
             <dl>
               <InfoRow
                 label="Collected"
-                value={formatCurrency(deposit.amountCollected)}
+                value={formatCurrency(deposit.depositAmount)}
               />
               <InfoRow
                 label="Refunded"
-                value={formatCurrency(deposit.amountRefunded)}
+                value={formatCurrency(deposit.refundAmount)}
               />
               <InfoRow
-                label="Damage cost"
-                value={formatCurrency(deposit.damageCost)}
+                label="Damage / Penalty cost"
+                value={formatCurrency(deposit.penaltyAmount)}
               />
               <InfoRow
                 label="Remaining"
                 value={formatCurrency(remaining)}
               />
-              <InfoRow label="Reason" value={deposit.reason || '—'} />
+              <InfoRow label="Reason / Remarks" value={deposit.remarks || deposit.penaltyReason || '—'} />
               <InfoRow
                 label="Collected at"
                 value={formatDateTime(deposit.createdAt)}
               />
-              <InfoRow
-                label="Last refund"
-                value={formatDateTime(deposit.refundedAt)}
-              />
+              {deposit.refundDate && (
+                <InfoRow
+                  label="Refunded Date"
+                  value={formatDateTime(deposit.refundDate)}
+                />
+              )}
             </dl>
           </InfoCard>
 
@@ -151,36 +155,36 @@ export default function DepositDetailPage() {
                       href={APP_ROUTES.ADMIN.RENTAL_ORDER_DETAIL(rental.id)}
                       className="text-accent hover:underline"
                     >
-                      {rental.bookingNumber}
+                      {rental.orderNumber}
                     </Link>
                   ) : (
                     '—'
                   )
                 }
               />
-              <InfoRow label="Customer" value={customerName(rental?.customer)} />
+              <InfoRow label="Customer" value={customerName(rental?.customer || deposit.customer)} />
               <InfoRow
                 label="Vehicle"
-                value={vehicleLabel(rental?.rentalItems)}
+                value={rental?.vehicle ? `${rental.vehicle.brand} ${rental.vehicle.model}` : '—'}
               />
-              <InfoRow label="Rental status" value={rental?.status || '—'} />
+              <InfoRow label="Rental status" value={rental?.orderStatus || '—'} />
               <InfoRow
                 label="Required deposit"
-                value={formatCurrency(rental?.securityDeposit)}
+                value={formatCurrency(deposit.depositAmount)}
               />
             </dl>
           </InfoCard>
 
-          {Number(deposit.amountRefunded) > 0 ? (
+          {Number(deposit.refundAmount) > 0 ? (
             <div className="space-y-3">
               <h3 className="text-base font-semibold text-primary">
                 Refund history
               </h3>
               <TransactionCard
                 title="Refund processed"
-                amount={deposit.amountRefunded}
+                amount={deposit.refundAmount}
                 status={deposit.refundStatus}
-                date={deposit.refundedAt || deposit.updatedAt}
+                date={deposit.refundDate || deposit.updatedAt}
                 type="refund"
               />
             </div>
@@ -189,10 +193,15 @@ export default function DepositDetailPage() {
 
         <div className="space-y-4">
           <DepositCard deposit={{ ...deposit, rentalOrder: rental }} />
-          {!canRefund && deposit.refundStatus !== 'REFUNDED' ? (
+          {!isCompleted && !isRefunded ? (
             <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-warning">
               Refunds are only allowed after the rental order status is
-              COMPLETED.
+              Completed.
+            </p>
+          ) : null}
+          {isCompleted && deposit.depositStatus === 'Held' && !isRefunded ? (
+            <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-warning">
+              Please release the deposit or process manual refund step inside the rental order closure page first.
             </p>
           ) : null}
         </div>
