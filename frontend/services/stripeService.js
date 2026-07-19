@@ -19,6 +19,11 @@ const stripeService = {
     return parseApiResponse(response);
   },
 
+  async cancelCheckout(orderId) {
+    const response = await api.post(API_ROUTES.STRIPE.CANCEL_CHECKOUT(orderId));
+    return parseApiResponse(response);
+  },
+
   async getPayment(paymentId) {
     const response = await api.get(API_ROUTES.STRIPE.PAYMENT(paymentId));
     return parseApiResponse(response);
