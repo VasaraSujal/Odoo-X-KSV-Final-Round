@@ -80,6 +80,7 @@ export const API_ROUTES = Object.freeze({
   STRIPE: {
     CREATE_PAYMENT_INTENT: '/stripe/create-payment-intent',
     CREATE_CHECKOUT_SESSION: '/stripe/create-checkout-session',
+    CANCEL_CHECKOUT: (orderId) => `/stripe/cancel-checkout/${orderId}`,
     PAYMENT: (paymentId) => `/stripe/payment/${paymentId}`,
     REFUND: (paymentId) => `/stripe/refund/${paymentId}`,
   },
