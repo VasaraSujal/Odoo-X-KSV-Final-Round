@@ -30,26 +30,31 @@ class RentalOrderService {
     const pickupOtp = "1234";
 
 
-    // Calculate rentalAmount based on vehicle prices
-    let rentRate = 0;
-    switch (data.rentalUnit) {
-      case 'Hour':
-        rentRate = Number(vehicle.rentPerHour);
-        break;
-      case 'Day':
-        rentRate = Number(vehicle.rentPerDay);
-        break;
-      case 'Week':
-        rentRate = Number(vehicle.rentPerWeek);
-        break;
-      case 'Month':
-        rentRate = Number(vehicle.rentPerMonth);
-        break;
-      default:
-        throw new ApiError(400, 'Invalid rental unit');
-    }
+    // Calculate rentalAmount using Hybrid/Price-cap method (Best Price Guarantee)
+    const totalHours = data.rentalDuration; // Frontend now passes total hours
+    const rHour = Number(vehicle.rentPerHour || 0);
+    const rDay = Number(vehicle.rentPerDay || 0);
+    const rWeek = Number(vehicle.rentPerWeek || 0);
+    const rMonth = Number(vehicle.rentPerMonth || 0);
 
-    const rentalAmount = rentRate * data.rentalDuration;
+    let h = totalHours;
+    const m = Math.floor(h / 720);
+    h %= 720;
+    const w = Math.floor(h / 168);
+    h %= 168;
+    const d = Math.floor(h / 24);
+    h %= 24;
+
+    let hourlyCost = h * rHour;
+    if (hourlyCost > rDay) hourlyCost = rDay;
+
+    let dailyCost = d * rDay + hourlyCost;
+    if (dailyCost > rWeek) dailyCost = rWeek;
+
+    let weeklyCost = w * rWeek + dailyCost;
+    if (weeklyCost > rMonth) weeklyCost = rMonth;
+
+    const rentalAmount = m * rMonth + weeklyCost;
     const orderNumber = await roRepository.generateOrderNumber();
 
     const orderData = {
