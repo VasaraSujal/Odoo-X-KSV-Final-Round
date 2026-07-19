@@ -26,6 +26,7 @@ import ErrorState from '@/components/dashboard/ErrorState';
 import SectionHeader from '@/components/dashboard/SectionHeader';
 import rentalService from '@/services/rentalService';
 import securityDepositService from '@/services/securityDepositService';
+import userService from '@/services/userService';
 import { APP_ROUTES } from '@/constants/routes';
 import {
   customerName,
@@ -79,6 +80,22 @@ export default function RentalOrderDetailPage() {
       notify.error(getErrorMessage(err));
     } finally {
       setRefunding(false);
+    }
+  }
+
+  const [verifyingCustomer, setVerifyingCustomer] = useState(false);
+
+  async function handleVerifyCustomer() {
+    if (!order?.customerId) return;
+    setVerifyingCustomer(true);
+    try {
+      await userService.updateUser(order.customerId, { isVerified: true });
+      notify.success('Customer Driving License verified successfully!');
+      load();
+    } catch (err) {
+      notify.error(getErrorMessage(err));
+    } finally {
+      setVerifyingCustomer(false);
     }
   }
 
@@ -445,6 +462,17 @@ export default function RentalOrderDetailPage() {
                   ) : (
                     <div className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-rose-500 bg-rose-50/30">
                       ⚠️ No driving license copy image uploaded by user.
+                    </div>
+                  )}
+
+                  {!order.customer?.isVerified && order.customer?.drivingLicenseNo && (
+                    <div className="mt-5 border-t border-border pt-4 flex justify-end">
+                      <Button
+                        onClick={handleVerifyCustomer}
+                        loading={verifyingCustomer}
+                      >
+                        Approve & Verify Driving License
+                      </Button>
                     </div>
                   )}
                 </div>

@@ -16,6 +16,7 @@ router.put('/profile', validate(updateProfileSchema), userController.updateProfi
 router.use(authorize('ADMIN'));
 router.get('/', userController.getAllUsers);
 router.get('/:id', userController.getUserById);
+router.put('/:id', validate(updateProfileSchema), userController.updateUser);
 router.delete('/:id', userController.deleteUser);
 
 export default router;

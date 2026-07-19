@@ -23,6 +23,11 @@ const userService = {
     return parseApiResponse(response);
   },
 
+  async updateUser(id, payload) {
+    const response = await api.put(API_ROUTES.USERS.BY_ID(id), payload);
+    return parseApiResponse(response);
+  },
+
   async remove(id) {
     const response = await api.delete(API_ROUTES.USERS.BY_ID(id));
     return parseApiResponse(response);

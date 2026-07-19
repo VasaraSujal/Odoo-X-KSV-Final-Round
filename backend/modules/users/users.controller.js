@@ -27,6 +27,11 @@ class UserController {
     await userService.deleteUser(req.params.id);
     res.status(200).json(new ApiResponse(200, null, 'User deleted successfully'));
   });
+
+  updateUser = catchAsync(async (req, res) => {
+    const user = await userService.updateProfile(req.params.id, req.body);
+    res.status(200).json(new ApiResponse(200, user, 'User updated successfully'));
+  });
 }
 
 export default new UserController();
