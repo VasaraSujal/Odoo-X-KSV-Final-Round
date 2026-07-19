@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  Car, Heart, Star, Fuel, Settings2, Users, Gauge, Zap, ShieldCheck, CheckCircle, CalendarRange, Clock,
+  Car, Heart, Star, Fuel, Settings2, Users, Gauge, Zap, ShieldCheck, CheckCircle, CalendarRange, Clock, CreditCard, Loader2,
 } from 'lucide-react';
 import MasterPage from '@/components/master/MasterPage';
 import PageLoader from '@/components/common/PageLoader';
@@ -13,6 +13,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { APP_ROUTES } from '@/constants/routes';
 import vehicleService from '@/services/vehicleService';
 import rentalService from '@/services/rentalService';
+import stripeService from '@/services/stripeService';
 import favouriteService from '@/services/favouriteService';
 import userService from '@/services/userService';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -86,8 +87,6 @@ export default function CustomerVehicleDetailPage() {
   const [returnTime, setReturnTime] = useState('10:00');  // HH:MM
   // pickupType must match backend enum exactly
   const [pickupType, setPickupType] = useState('Store_Pickup');
-  const [paymentMethod, setPaymentMethod] = useState('UPI'); // 'UPI' | 'Card' | 'Cash'
-  const [transactionId, setTransactionId] = useState('');
   const [booking, setBooking] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -128,7 +127,7 @@ export default function CustomerVehicleDetailPage() {
   }
 
   // ------------------------------------------------------------------
-  // Pricing calculation — base unit is HOURS
+  // Pricing calculation — matches backend rentalOrders.service.js
   // ------------------------------------------------------------------
   const totalHours = useMemo(() => {
     const fromISO = toISODateTime(pickupDate, pickupTime);
@@ -137,23 +136,44 @@ export default function CustomerVehicleDetailPage() {
     const diff = new Date(toISO) - new Date(fromISO);
     return Math.max(1, Math.round(diff / (1000 * 60 * 60)));
   }, [pickupDate, pickupTime, returnDate, returnTime]);
-  const rentPerHour = vehicle ? Number(vehicle.rentPerHour || 0) : 0;
-  const rentalAmount = rentPerHour * totalHours;
-  const securityDeposit = vehicle ? Number(vehicle.securityDeposit || 0) : 0;
-  const totalPayable = rentalAmount + securityDeposit;
-
-  // Derive rentalUnit and rentalDuration for backend
-  const { rentalUnit, rentalDuration } = useMemo(() => {
-    if (totalHours < 24) return { rentalUnit: 'Hour', rentalDuration: totalHours };
-    const days = Math.ceil(totalHours / 24);
-    if (days < 7)  return { rentalUnit: 'Day',  rentalDuration: days };
-    const weeks = Math.ceil(days / 7);
-    if (weeks < 4) return { rentalUnit: 'Week', rentalDuration: weeks };
-    return { rentalUnit: 'Month', rentalDuration: Math.ceil(weeks / 4) };
-  }, [totalHours]);
 
   // ------------------------------------------------------------------
-  // Booking handler
+  // Smart Hybrid Pricing (Best Price Guarantee)
+  // ------------------------------------------------------------------
+  const rentalAmount = useMemo(() => {
+    if (!vehicle || totalHours === 0) return 0;
+    const rHour = Number(vehicle.rentPerHour || 0);
+    const rDay = Number(vehicle.rentPerDay || 0);
+    const rWeek = Number(vehicle.rentPerWeek || 0);
+    const rMonth = Number(vehicle.rentPerMonth || 0);
+
+    let h = totalHours;
+    const m = Math.floor(h / 720);
+    h %= 720;
+    const w = Math.floor(h / 168);
+    h %= 168;
+    const d = Math.floor(h / 24);
+    h %= 24;
+
+    // Apply strict step-up caps so the user always gets the cheapest rate
+    let hourlyCost = h * rHour;
+    if (hourlyCost > rDay) hourlyCost = rDay;
+
+    let dailyCost = d * rDay + hourlyCost;
+    if (dailyCost > rWeek) dailyCost = rWeek;
+
+    let weeklyCost = w * rWeek + dailyCost;
+    if (weeklyCost > rMonth) weeklyCost = rMonth;
+
+    return m * rMonth + weeklyCost;
+  }, [totalHours, vehicle]);
+
+  const taxAmount = Math.round(rentalAmount * 0.18 * 100) / 100; // 18% GST
+  const securityDeposit = vehicle ? Number(vehicle.securityDeposit || 0) : 0;
+  const totalPayable = rentalAmount + taxAmount + securityDeposit;
+
+  // ------------------------------------------------------------------
+  // Booking handler — creates order then redirects to Stripe checkout
   // ------------------------------------------------------------------
   async function handleBooking() {
     if (!pickupDate)  { notify.error('Please select a pickup date'); return; }
@@ -164,27 +184,42 @@ export default function CustomerVehicleDetailPage() {
     if (toDT <= fromDT) {
       notify.error('Return date & time must be after pickup date & time'); return;
     }
-    if (paymentMethod !== 'Cash' && !transactionId.trim()) {
-      notify.error('Please enter the payment transaction reference ID'); return;
-    }
 
     setBooking(true);
     try {
+      // Step 1: Create the rental order
       const payload = {
         vehicleId: id,
-        pickupType,                          // 'Store_Pickup' | 'Home_Delivery'
+        pickupType,
         pickupDate: toISODateTime(pickupDate, pickupTime),
         expectedReturnDate: toISODateTime(returnDate, returnTime),
-        rentalUnit,                          // derived from date diff
-        rentalDuration,                      // derived from date diff
-        paymentMethod,                       // 'Cash' | 'Card' | 'UPI'
-        transactionId: paymentMethod === 'Cash' ? `CASH-${Date.now()}` : transactionId,
+        rentalUnit: 'Hour', // Backend now recalculates price based purely on total hours
+        rentalDuration: totalHours,
+        paymentMethod: 'Card',
       };
 
       const res = await rentalService.create(payload);
-      notify.success('Booking confirmed! 🎉');
       const orderId = res.data?.id || res.data?.rentalOrder?.id;
-      router.push(APP_ROUTES.CUSTOMER.RENTAL_DETAIL(orderId));
+
+      if (!orderId) {
+        notify.error('Booking created but could not retrieve order ID');
+        return;
+      }
+
+      // Step 2: Immediately redirect to Stripe Checkout
+      const origin = window.location.origin;
+      const stripeRes = await stripeService.createCheckoutSession(orderId, {
+        successUrl: `${origin}/customer/payments/success?orderId=${orderId}`,
+        cancelUrl: `${origin}/customer/payments/cancel?orderId=${orderId}`,
+      });
+
+      if (stripeRes.data?.url) {
+        window.location.href = stripeRes.data.url;
+      } else {
+        // Fallback: go to order detail (button there too)
+        notify.success('Booking created! Redirecting to payment…');
+        router.push(APP_ROUTES.CUSTOMER.RENTAL_DETAIL(orderId));
+      }
     } catch (err) {
       notify.error(getErrorMessage(err));
     } finally {
@@ -449,110 +484,27 @@ export default function CustomerVehicleDetailPage() {
                 </div>
               </div>
 
-              {/* Payment Method */}
-              <div className="mb-4">
-                <label className="mb-1.5 block text-xs font-semibold text-muted uppercase tracking-wide">
-                  Payment Method
-                </label>
-                <div className="flex gap-2 mb-3">
-                  {['UPI', 'Card', 'Cash'].map((method) => (
-                    <button
-                      key={method}
-                      type="button"
-                      onClick={() => {
-                        setPaymentMethod(method);
-                        setTransactionId('');
-                      }}
-                      className={`flex-1 rounded-xl border py-2 text-xs font-semibold transition
-                        ${paymentMethod === method ? 'border-accent bg-accent/10 text-accent' : 'border-border text-muted hover:border-accent/50'}`}
-                    >
-                      {method === 'UPI' ? '📱 UPI' : method === 'Card' ? '💳 Card' : '💵 Cash'}
-                    </button>
-                  ))}
+              {/* Stripe Payment Info */}
+              <div className="mb-4 rounded-xl border border-accent/20 bg-accent/5 p-3 flex items-center gap-3">
+                <CreditCard size={18} className="text-accent shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-primary">Secure Online Payment via Stripe</p>
+                  <p className="text-[10px] text-muted mt-0.5">You will be redirected to Stripe's secure checkout to complete payment.</p>
                 </div>
-
-                {/* UPI QR Payment */}
-                {paymentMethod === 'UPI' && (
-                  <div className="rounded-xl border border-border p-3 bg-slate-50 space-y-3">
-                    <div className="text-center space-y-1.5">
-                      <p className="text-[11px] font-semibold text-muted uppercase">Scan & Pay ₹{totalPayable}</p>
-                      {/* Modern CSS QR Code Mock */}
-                      <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-xl bg-white border border-border p-2">
-                        <div className="h-full w-full bg-[linear-gradient(45deg,#111_25%,transparent_25%),linear-gradient(-45deg,#111_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#111_75%),linear-gradient(-45deg,transparent_75%,#111_75%)] bg-[size:10px_10px] opacity-75" />
-                      </div>
-                      <p className="text-[10px] text-muted leading-tight">Please scan the QR code using any UPI app (GPay/PhonePe/Paytm) to complete payment.</p>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-[10px] font-semibold text-muted uppercase">UTR/Transaction Reference ID</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 12-digit UPI reference number"
-                        value={transactionId}
-                        onChange={(e) => setTransactionId(e.target.value)}
-                        className="input-field w-full text-xs"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Card Payment */}
-                {paymentMethod === 'Card' && (
-                  <div className="rounded-xl border border-border p-3 bg-slate-50 space-y-3">
-                    <p className="text-[10px] font-semibold text-muted uppercase">Enter Card Details</p>
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        placeholder="Card Number (16-digit)"
-                        maxLength={16}
-                        className="input-field w-full text-xs"
-                      />
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="MM/YY"
-                          maxLength={5}
-                          className="input-field w-1/2 text-xs"
-                        />
-                        <input
-                          type="password"
-                          placeholder="CVV"
-                          maxLength={3}
-                          className="input-field w-1/2 text-xs"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-[10px] font-semibold text-muted uppercase">Payment Transaction ID</label>
-                        <input
-                          type="text"
-                          placeholder="Reference number or card holder name"
-                          value={transactionId}
-                          onChange={(e) => setTransactionId(e.target.value)}
-                          className="input-field w-full text-xs"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Cash payment info */}
-                {paymentMethod === 'Cash' && (
-                  <div className="rounded-xl border border-border p-3 bg-slate-50">
-                    <p className="text-[11px] font-semibold text-amber-700">💵 Pay on Handover</p>
-                    <p className="text-[10px] text-muted mt-1 leading-tight">
-                      You can pay the total amount of ₹{totalPayable} in cash directly to our executive at the time of pickup or delivery.
-                    </p>
-                  </div>
-                )}
               </div>
 
               {/* Price Summary */}
               <div className="mb-4 rounded-xl border border-border bg-slate-50 p-3 space-y-1.5">
                 <div className="flex justify-between text-xs text-muted">
-                  <span>{totalHours} hours × {formatCurrency(rentPerHour)}/hr</span>
+                  <span>Rental Charge ({formatDuration(totalHours)})</span>
                   <span className="font-semibold text-primary tabular-nums">{formatCurrency(rentalAmount)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-muted">
-                  <span>Security Deposit</span>
+                  <span>GST (18%)</span>
+                  <span className="font-semibold text-primary tabular-nums">{formatCurrency(taxAmount)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-muted">
+                  <span>Security Deposit (Refundable)</span>
                   <span className="font-semibold text-primary tabular-nums">{formatCurrency(securityDeposit)}</span>
                 </div>
                 <div className="flex justify-between border-t border-border pt-2 text-sm font-bold text-primary">
@@ -563,6 +515,7 @@ export default function CustomerVehicleDetailPage() {
 
               <button
                 type="button"
+                disabled={booking}
                 onClick={() => {
                   if (!pickupDate) { notify.error('Select a pickup date'); return; }
                   if (!returnDate) { notify.error('Select a return date'); return; }
@@ -573,9 +526,13 @@ export default function CustomerVehicleDetailPage() {
                   }
                   setShowConfirm(true);
                 }}
-                className="w-full rounded-xl bg-accent py-3 text-sm font-bold text-white transition hover:bg-accent/90 active:scale-95"
+                className="w-full rounded-xl bg-accent py-3 text-sm font-bold text-white transition hover:bg-accent/90 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60"
               >
-                Confirm Booking
+                {booking ? (
+                  <><Loader2 size={16} className="animate-spin" /> Redirecting to Stripe…</>
+                ) : (
+                  <><CreditCard size={16} /> Book & Pay {formatCurrency(totalPayable)}</>
+                )}
               </button>
             </div>
             )
