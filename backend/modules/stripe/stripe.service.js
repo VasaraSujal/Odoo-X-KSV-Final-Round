@@ -28,24 +28,64 @@ class StripeService {
   async createCheckoutSession(orderId, successUrl, cancelUrl) {
     const order = await prisma.rentalOrder.findUnique({
       where: { id: orderId },
-      include: { payment: true }
+      include: { payment: true, vehicle: true, securityDeposit: true }
     });
     if (!order) throw new ApiError(404, 'Rental Order not found');
     if (!order.payment) throw new ApiError(404, 'Payment record not found for this order');
     if (order.payment.paymentStatus === 'Paid') throw new ApiError(400, 'Order is already paid');
 
+    // Pre-reserve the vehicle so no other customer can book it during payment
+    await prisma.$transaction(async (tx) => {
+      await tx.vehicle.update({
+        where: { id: order.vehicleId },
+        data: { status: 'Reserved' }
+      });
+      await tx.rentalOrder.update({
+        where: { id: orderId },
+        data: { orderStatus: 'Confirmed' }
+      });
+    });
+
     const balance = Number(order.payment.totalAmount);
+
+    // Build line items with rental + tax + deposit breakdown
+    const rentalAmount = Number(order.rentalAmount);
+    const taxAmount = rentalAmount * 0.18;
+    const depositAmount = Number(order.securityDeposit?.depositAmount || 0);
+
+    const lineItems = [
+      {
+        price_data: {
+          currency: 'inr',
+          product_data: { name: `Rental Charge — Order #${order.orderNumber}` },
+          unit_amount: Math.round(rentalAmount * 100)
+        },
+        quantity: 1,
+      },
+      {
+        price_data: {
+          currency: 'inr',
+          product_data: { name: `GST (18%)` },
+          unit_amount: Math.round(taxAmount * 100)
+        },
+        quantity: 1,
+      },
+    ];
+
+    if (depositAmount > 0) {
+      lineItems.push({
+        price_data: {
+          currency: 'inr',
+          product_data: { name: `Security Deposit (Refundable)` },
+          unit_amount: Math.round(depositAmount * 100)
+        },
+        quantity: 1,
+      });
+    }
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: 'inr',
-          product_data: { name: `Rental Order #${order.orderNumber}` },
-          unit_amount: Math.round(balance * 100)
-        },
-        quantity: 1,
-      }],
+      line_items: lineItems,
       mode: 'payment',
       success_url: successUrl,
       cancel_url: cancelUrl,
@@ -54,13 +94,49 @@ class StripeService {
     return { url: session.url, sessionId: session.id };
   }
 
+  /**
+   * Called when a customer cancels the Stripe checkout.
+   * Rolls back the pre-reservation so the vehicle becomes available again.
+   */
+  async cancelCheckout(orderId) {
+    const order = await prisma.rentalOrder.findUnique({
+      where: { id: orderId },
+      include: { payment: true }
+    });
+    if (!order) throw new ApiError(404, 'Rental order not found');
+
+    // Only rollback if payment is still pending (not yet paid)
+    if (order.payment && order.payment.paymentStatus === 'Paid') {
+      throw new ApiError(400, 'Payment already completed, cannot cancel');
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.rentalOrder.update({
+        where: { id: orderId },
+        data: { orderStatus: 'Pending' }
+      });
+      await tx.vehicle.update({
+        where: { id: order.vehicleId },
+        data: { status: 'Available' }
+      });
+    });
+
+    return { message: 'Checkout cancelled, vehicle released' };
+  }
+
   async handleWebhook(signature, rawBody) {
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
     let event;
-    try {
-      event = stripe.webhooks.constructEvent(rawBody, signature, endpointSecret);
-    } catch (err) {
-      throw new ApiError(400, `Webhook Error: ${err.message}`);
+
+    // If no webhook secret is configured, parse the event directly (dev mode)
+    if (!endpointSecret) {
+      event = JSON.parse(typeof rawBody === 'string' ? rawBody : rawBody.toString());
+    } else {
+      try {
+        event = stripe.webhooks.constructEvent(rawBody, signature, endpointSecret);
+      } catch (err) {
+        throw new ApiError(400, `Webhook Error: ${err.message}`);
+      }
     }
 
     if (event.type === 'payment_intent.succeeded' || event.type === 'checkout.session.completed') {
@@ -69,10 +145,10 @@ class StripeService {
       
       if (orderId) {
         const transactionId = data.payment_intent || data.id;
-        const existing = await prisma.payment.findUnique({ where: { transactionId } });
-        
-        if (!existing) {
-          await prisma.payment.update({
+
+        await prisma.$transaction(async (tx) => {
+          // Update payment record
+          await tx.payment.update({
             where: { orderId },
             data: {
               transactionId,
@@ -81,7 +157,20 @@ class StripeService {
               paymentDate: new Date()
             }
           });
-        }
+
+          // Auto-confirm the order and reserve the vehicle
+          const order = await tx.rentalOrder.findUnique({ where: { id: orderId } });
+          if (order) {
+            await tx.rentalOrder.update({
+              where: { id: orderId },
+              data: { orderStatus: 'Confirmed' }
+            });
+            await tx.vehicle.update({
+              where: { id: order.vehicleId },
+              data: { status: 'Reserved' }
+            });
+          }
+        });
       }
     }
     return { received: true };
