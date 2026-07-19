@@ -92,21 +92,23 @@ async function main() {
 
   // 5. Vehicles
   const vehiclesData = [
-    { brand: 'Toyota', model: 'Fortuner', cat: 'SUV', reg: 'GJ01AB1234', vin: 'VIN1234567890SUV1', year: 2023, fuel: 'Diesel', trans: 'Automatic', seats: 7, mileage: 12, hrPrice: 200, dayPrice: 3000, wkPrice: 18000, moPrice: 65000, dep: 10000, color: 'White' },
-    { brand: 'Hyundai', model: 'Creta', cat: 'SUV', reg: 'GJ01CD5678', vin: 'VIN1234567890SUV2', year: 2022, fuel: 'Petrol', trans: 'Manual', seats: 5, mileage: 14, hrPrice: 150, dayPrice: 2000, wkPrice: 12000, moPrice: 45000, dep: 5000, color: 'Black' },
-    { brand: 'Honda', model: 'City', cat: 'Sedan', reg: 'GJ01EF9012', vin: 'VIN1234567890SED1', year: 2023, fuel: 'Petrol', trans: 'Automatic', seats: 5, mileage: 16, hrPrice: 120, dayPrice: 1800, wkPrice: 10500, moPrice: 38000, dep: 5000, color: 'Silver' },
-    { brand: 'Maruti', model: 'Baleno', cat: 'Hatchback', reg: 'GJ01GH3456', vin: 'VIN1234567890HAT1', year: 2021, fuel: 'Petrol', trans: 'Manual', seats: 5, mileage: 18, hrPrice: 90, dayPrice: 1200, wkPrice: 7200, moPrice: 26000, dep: 3000, color: 'Blue' },
-    { brand: 'BMW', model: 'X5', cat: 'Luxury', reg: 'GJ01IJ7890', vin: 'VIN1234567890LUX1', year: 2023, fuel: 'Petrol', trans: 'Automatic', seats: 5, mileage: 10, hrPrice: 500, dayPrice: 8000, wkPrice: 48000, moPrice: 180000, dep: 20000, color: 'Black' },
-    { brand: 'Mercedes', model: 'C-Class', cat: 'Luxury', reg: 'GJ01KL1234', vin: 'VIN1234567890LUX2', year: 2022, fuel: 'Diesel', trans: 'Automatic', seats: 5, mileage: 12, hrPrice: 450, dayPrice: 7500, wkPrice: 45000, moPrice: 160000, dep: 15000, color: 'White' },
-    { brand: 'Tata', model: 'Nexon EV', cat: 'Electric', reg: 'GJ01MN5678', vin: 'VIN1234567890ELE1', year: 2023, fuel: 'Electric', trans: 'Automatic', seats: 5, mileage: 300, hrPrice: 180, dayPrice: 2500, wkPrice: 15000, moPrice: 55000, dep: 8000, color: 'Teal' },
-    { brand: 'Mahindra', model: 'Scorpio N', cat: 'SUV', reg: 'GJ01OP9012', vin: 'VIN1234567890SUV3', year: 2023, fuel: 'Diesel', trans: 'Manual', seats: 7, mileage: 11, hrPrice: 180, dayPrice: 2500, wkPrice: 15000, moPrice: 55000, dep: 8000, color: 'Green' },
+    { brand: 'Toyota', model: 'Fortuner', cat: 'SUV', reg: 'GJ01AB1234', vin: 'VIN1234567890SUV1', year: 2023, fuel: 'Diesel', trans: 'Automatic', seats: 7, mileage: 12, hrPrice: 200, dayPrice: 3000, wkPrice: 18000, moPrice: 65000, dep: 10000, color: 'White', engineCapacity: '2755' },
+    { brand: 'Hyundai', model: 'Creta', cat: 'SUV', reg: 'GJ01CD5678', vin: 'VIN1234567890SUV2', year: 2022, fuel: 'Petrol', trans: 'Manual', seats: 5, mileage: 14, hrPrice: 150, dayPrice: 2000, wkPrice: 12000, moPrice: 45000, dep: 5000, color: 'Black', engineCapacity: '1497' },
+    { brand: 'Honda', model: 'City', cat: 'Sedan', reg: 'GJ01EF9012', vin: 'VIN1234567890SED1', year: 2023, fuel: 'Petrol', trans: 'Automatic', seats: 5, mileage: 16, hrPrice: 120, dayPrice: 1800, wkPrice: 10500, moPrice: 38000, dep: 5000, color: 'Silver', engineCapacity: '1498' },
+    { brand: 'Maruti', model: 'Baleno', cat: 'Hatchback', reg: 'GJ01GH3456', vin: 'VIN1234567890HAT1', year: 2021, fuel: 'Petrol', trans: 'Manual', seats: 5, mileage: 18, hrPrice: 90, dayPrice: 1200, wkPrice: 7200, moPrice: 26000, dep: 3000, color: 'Blue', engineCapacity: '1197' },
+    { brand: 'BMW', model: 'X5', cat: 'Luxury', reg: 'GJ01IJ7890', vin: 'VIN1234567890LUX1', year: 2023, fuel: 'Petrol', trans: 'Automatic', seats: 5, mileage: 10, hrPrice: 500, dayPrice: 8000, wkPrice: 48000, moPrice: 180000, dep: 20000, color: 'Black', engineCapacity: '2998' },
+    { brand: 'Mercedes', model: 'C-Class', cat: 'Luxury', reg: 'GJ01KL1234', vin: 'VIN1234567890LUX2', year: 2022, fuel: 'Diesel', trans: 'Automatic', seats: 5, mileage: 12, hrPrice: 450, dayPrice: 7500, wkPrice: 45000, moPrice: 160000, dep: 15000, color: 'White', engineCapacity: '1993' },
+    { brand: 'Tata', model: 'Nexon EV', cat: 'Electric', reg: 'GJ01MN5678', vin: 'VIN1234567890ELE1', year: 2023, fuel: 'Electric', trans: 'Automatic', seats: 5, mileage: 300, hrPrice: 180, dayPrice: 2500, wkPrice: 15000, moPrice: 55000, dep: 8000, color: 'Teal', engineCapacity: 'EV' },
+    { brand: 'Mahindra', model: 'Scorpio N', cat: 'SUV', reg: 'GJ01OP9012', vin: 'VIN1234567890SUV3', year: 2023, fuel: 'Diesel', trans: 'Manual', seats: 7, mileage: 11, hrPrice: 180, dayPrice: 2500, wkPrice: 15000, moPrice: 55000, dep: 8000, color: 'Green', engineCapacity: '2198' },
   ];
 
   const vehicles = {};
   for (const v of vehiclesData) {
     const dbVehicle = await prisma.vehicle.upsert({
       where: { registrationNumber: v.reg },
-      update: {},
+      update: {
+        engineCapacity: v.engineCapacity
+      },
       create: {
         categoryId: categories[v.cat],
         vehicleName: `${v.brand} ${v.model}`,
@@ -119,6 +121,7 @@ async function main() {
         transmission: v.trans,
         seatCapacity: v.seats,
         mileage: v.mileage,
+        engineCapacity: v.engineCapacity,
         rentPerHour: v.hrPrice,
         rentPerDay: v.dayPrice,
         rentPerWeek: v.wkPrice,
