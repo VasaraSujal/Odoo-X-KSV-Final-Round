@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Car, CreditCard, ShieldCheck, FileText, CheckCircle, Circle, Clock, Printer } from 'lucide-react';
+import { Car, CreditCard, ShieldCheck, FileText, CheckCircle, Circle, Clock, Printer, Loader2 } from 'lucide-react';
 import MasterPage from '@/components/master/MasterPage';
 import PageLoader from '@/components/common/PageLoader';
 import ErrorState from '@/components/dashboard/ErrorState';
@@ -11,8 +11,10 @@ import { APP_ROUTES } from '@/constants/routes';
 import rentalService from '@/services/rentalService';
 import paymentService from '@/services/paymentService';
 import securityDepositService from '@/services/securityDepositService';
+import stripeService from '@/services/stripeService';
 import { formatCurrency, formatDate, formatDateTime, customerName } from '@/lib/format';
 import { getErrorMessage } from '@/lib/apiResponse';
+import notify from '@/lib/toast';
 
 const STATUS_STYLE = {
   Active: 'bg-emerald-100 text-emerald-700',
@@ -62,6 +64,7 @@ export default function CustomerRentalDetailPage() {
   const [deposit, setDeposit] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [paying, setPaying] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -199,10 +202,43 @@ export default function CustomerRentalDetailPage() {
             <InfoRow label="Rental Amount" value={formatCurrency(order.rentalAmount)} />
             {payment ? (
               <>
-                <InfoRow label="Total Paid" value={formatCurrency(payment.totalAmount)} />
+                <InfoRow label="Total Payable" value={formatCurrency(payment.totalAmount)} />
                 <InfoRow label="Method" value={payment.paymentMethod} />
                 <InfoRow label="Status" value={payment.paymentStatus} />
-                <InfoRow label="Paid On" value={formatDateTime(payment.paymentDate || payment.createdAt)} />
+                {payment.paymentStatus === 'Paid' && (
+                  <InfoRow label="Paid On" value={formatDateTime(payment.paymentDate || payment.createdAt)} />
+                )}
+
+                {/* Stripe Pay Now Button */}
+                {payment.paymentStatus === 'Pending' && (
+                  <button
+                    type="button"
+                    disabled={paying}
+                    onClick={async () => {
+                      setPaying(true);
+                      try {
+                        const origin = window.location.origin;
+                        const res = await stripeService.createCheckoutSession(order.id, {
+                          successUrl: `${origin}/customer/payments/success?orderId=${order.id}`,
+                          cancelUrl: `${origin}/customer/payments/cancel?orderId=${order.id}`,
+                        });
+                        if (res.data?.url) {
+                          window.location.href = res.data.url;
+                        }
+                      } catch (err) {
+                        notify.error(getErrorMessage(err));
+                        setPaying(false);
+                      }
+                    }}
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 text-sm font-bold text-white shadow-lg shadow-accent/25 transition hover:brightness-110 disabled:opacity-60"
+                  >
+                    {paying ? (
+                      <><Loader2 size={16} className="animate-spin" /> Processing…</>
+                    ) : (
+                      <><CreditCard size={16} /> Pay ₹{Number(payment.totalAmount).toLocaleString('en-IN')} with Stripe</>
+                    )}
+                  </button>
+                )}
               </>
             ) : (
               <div className="mt-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-700">
